@@ -1,0 +1,43 @@
+[package]
+name = "pretext"
+version = "0.1.0"
+edition = "2024"
+description = "DOM-free text measurement and line-breaking engine. Rust port of @chenglou/pretext."
+license = "MIT"
+repository = "https://github.com/mschirtzinger/pretext-rs"
+keywords = ["text", "layout", "line-breaking", "wasm", "webgpu"]
+categories = ["text-processing", "wasm", "rendering"]
+
+[features]
+default = []
+wasm = ["dep:wasm-bindgen", "dep:web-sys", "dep:js-sys"]
+fontdue = ["dep:fontdue"]
+
+[dependencies]
+unicode-segmentation = "1.12"
+
+# WASM backend (optional)
+wasm-bindgen = { version = "0.2", optional = true }
+web-sys = { version = "0.3", features = [
+    "CanvasRenderingContext2d",
+    "HtmlCanvasElement",
+    "OffscreenCanvas",
+    "OffscreenCanvasRenderingContext2d",
+    "TextMetrics",
+    "Document",
+    "Window",
+], optional = true }
+js-sys = { version = "0.3", optional = true }
+
+# Native font backend (optional)
+fontdue = { version = "0.9", optional = true }
+
+[dev-dependencies]
+approx = "0.5"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
