@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>pretext-rs — Interactive Demo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+  :root {
+    --bg: #0a0e17;
+    --bg2: #0f1520;
+    --bg3: #162032;
+    --fg: #c8d3e0;
+    --dim: #3a4459;
+    --accent: #00d4ff;
+    --accent2: #ff6b9d;
+    --accent3: #7c5cfc;
+    --green: #00e5a0;
+    --orange: #ffb347;
+    --line-colors: #00d4ff, #ff6b9d, #7c5cfc, #00e5a0, #ffb347, #ff6b6b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { font-size: 16px; }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  .hero h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(0,212,255,0.3);
+    letter-spacing: -1px;
+  }
+
+  .hero .tagline {
+    color: var(--dim);
+    font-size: 1rem;
+    margin-top: 8px;
+  }
+
+  .hero .stats {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-top: 20px;
+  }
+
+  .hero .stat {
+    text-align: center;
+  }
+
+  .hero .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .hero .stat-label {
+    font-size: 0.7rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* ── Sections ───────────────────────────────────────── */
+  section {
+    margin-bottom: 48px;
+  }
+
+  section h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  section .subtitle {
+    font-size: 0.8rem;
+    color: var(--dim);
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+
+  /* ── Layout Box ─────────────────────────────────────── */
+  .layout-box {
+    background: var(--bg2);
+    border: 1px solid var(--dim);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .layout-box .width-indicator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: var(--bg3);
+    padding: 4px 10px;
+    border-radius: 0 8px 0 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--dim);
+  }
+
+  .layout-box .width-indicator span {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .layout-line {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .layout-line .line-bg {
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    border-radius: 3px;
+    opacity: 0.08;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .layout-line .line-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    width: 18px;
+    text-align: right;
+    opacity: 0.4;
+    margin-right: 8px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .layout-line .line-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    white-space: pre;
+    position: relative;
+    z-index: 1;
+    transition: opacity 0.15s;
+  }
+
+  .layout-line .line-width {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    margin-left: auto;
+    opacity: 0.35;
+    flex-shrink: 0;
+    padding-left: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Resize Handle ──────────────────────────────────── */
+  .resize-container {
+    position: relative;
+  }
+
+  .resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--accent);
+    cursor: col-resize;
+    border-radius: 2px;
+    opacity: 0.6;
+    transition: opacity 0.2s, box-shadow 0.2s;
+    z-index: 10;
+  }
+
+  .resize-handle:hover, .resize-handle.dragging {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(0,212,255,0.5);
+  }
+
+  .resize-handle::after {
+    content: '⋮';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 14px;
+    color: var(--accent);
+    pointer-events: none;
+  }
+
+  /* ── Slider ─────────────────────────────────────────── */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .slider-row label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--dim);
+    white-space: nowrap;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    background: var(--dim);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,212,255,0.4);
+  }
+
+  .slider-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    font-weight: 700;
+    min-width: 50px;
+    text-align: right;
+  }
+
+  /* ── Chip ────────────────────────────────────────────── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg3);
+    border: 1px solid var(--accent3);
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent3);
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.25s;
+  }
+
+  /* ── Perf Bars ──────────────────────────────────────── */
+  .perf-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    height: 28px;
+  }
+
+  .perf-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    width: 100px;
+    text-align: right;
+    padding-right: 12px;
+    color: var(--fg);
+  }
+
+  .perf-bar-bg {
+    flex: 1;
+    height: 20px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .perf-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+
+  .perf-bar-fill::after {
+    content: attr(data-value);
+    position: absolute;
+    right: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  /* ── Textarea ───────────────────────────────────────── */
+  textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--dim);
+    border-radius: 6px;
+    color: var(--fg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    padding: 10px;
+    resize: vertical;
+    min-height: 48px;
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--accent); }
+
+  /* ── Counter animation ──────────────────────────────── */
+  .counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Animate-in ─────────────────────────────────────── */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeIn 0.6s forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* ── Auto-resize animation ──────────────────────────── */
+  .auto-resize-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent2);
+    margin-left: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .auto-resize-indicator.active {
+    opacity: 1;
+  }
+
+  .auto-resize-indicator .dot {
+    width: 6px;
+    height: 6px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: pulse 0.8s infinite;
+  }
+
+  /* ── Layout timer ───────────────────────────────────── */
+  .layout-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-left: 8px;
+  }
+
+  .layout-timer.flash {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Hero -->
+  <div class="hero fade-in">
+    <h1>pretext-rs</h1>
+    <div class="tagline">DOM-free text measurement and line-breaking engine</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="perf-counter">0.00</div>
+        <div class="stat-label">µs / layout</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">0</div>
+        <div class="stat-label">allocations</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">2</div>
+        <div class="stat-label">phases</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 1: Interactive Resize -->
+  <section class="fade-in" style="animation-delay: 0.15s">
+    <h2>Live Reflow
+      <span class="auto-resize-indicator" id="auto-indicator">
+        <span class="dot"></span> auto-resizing
+      </span>
+      <span class="layout-timer" id="layout-timer"></span>
+    </h2>
+    <div class="subtitle">Drag the handle or let it animate — layout() runs in &lt;0.1µs per call</div>
+
+    <div class="slider-row">
+      <label>max_width</label>
+      <input type="range" id="width-slider" min="80" max="600" value="400">
+      <div class="slider-value" id="width-value">400px</div>
+    </div>
+
+    <div class="resize-container">
+      <div class="layout-box" id="reflow-box">
+        <div class="width-indicator">width: <span id="reflow-width">400</span>px</div>
+        <div id="reflow-lines"></div>
+      </div>
+      <div class="resize-handle" id="resize-handle"></div>
+    </div>
+  </section>
+
+  <!-- Section 2: Custom Text -->
+  <section class="fade-in" style="animation-delay: 0.3s">
+    <h2>Try Your Own Text</h2>
+    <div class="subtitle">Type anything — CJK wraps per-character, punctuation sticks to words</div>
+
+    <textarea id="custom-text" rows="2">The quick brown fox jumps over the lazy dog. 日本語のテキストも対応しています。</textarea>
+
+    <div class="slider-row">
+      <label>width</label>
+      <input type="range" id="custom-width-slider" min="60" max="600" value="300">
+      <div class="slider-value" id="custom-width-value">300px</div>
+    </div>
+
+    <div class="layout-box" id="custom-box">
+      <div class="width-indicator">width: <span id="custom-width-display">300</span>px</div>
+      <div id="custom-lines"></div>
+    </div>
+  </section>
+
+  <!-- Section 3: Inline Flow -->
+  <section class="fade-in" style="animation-delay: 0.45s">
+    <h2>Inline Flow</h2>
+    <div class="subtitle">Atomic chips never break — text wraps around them</div>
+
+    <div class="slider-row">
+      <label>width</label>
+      <input type="range" id="inline-width-slider" min="120" max="600" value="360">
+      <div class="slider-value" id="inline-width-value">360px</div>
+    </div>
+
+    <div class="layout-box" id="inline-box">
+      <div class="width-indicator">width: <span id="inline-width-display">360</span>px</div>
+      <div id="inline-lines"></div>
+    </div>
+  </section>
+
+  <!-- Section 4: Streaming API -->
+  <section class="fade-in" style="animation-delay: 0.6s">
+    <h2>Streaming API</h2>
+    <div class="subtitle">Per-line max_width — text flows around obstacles in real time</div>
+
+    <div class="layout-box" id="stream-box" style="min-height: 200px; position: relative">
+      <div id="stream-lines"></div>
+      <div id="obstacle" style="
+        position: absolute;
+        border: 1px dashed var(--accent2);
+        border-radius: 8px;
+        background: rgba(255,107,157,0.06);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.65rem;
+        color: var(--accent2);
+        opacity: 0.7;
+        cursor: grab;
+        user-select: none;
+      ">drag me</div>
+    </div>
+  </section>
+
+  <!-- Section 5: Performance -->
+  <section class="fade-in" style="animation-delay: 0.75s">
+    <h2>Performance</h2>
+    <div class="subtitle">prepare() once → layout() is pure arithmetic, no DOM, no canvas</div>
+
+    <div style="margin-top: 16px">
+      <div class="perf-row">
+        <div class="perf-label">layout()</div>
+        <div class="perf-bar-bg">
+          <div class="perf-bar-fill" id="bar-layout" style="width: 0%; background: var(--accent)" data-value=""></div>
+        </div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">DOM batched</div>
+        <div class="perf-bar-bg">
+          <div class="perf-bar-fill" id="bar-batched" style="width: 0%; background: var(--orange)" data-value=""></div>
+        </div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label">DOM reflow</div>
+        <div class="perf-bar-bg">
+          <div class="perf-bar-fill" id="bar-reflow" style="width: 0%; background: var(--accent2)" data-value=""></div>
+        </div>
+      </div>
+    </div>
+    <div style="font-size: 0.65rem; color: var(--dim); margin-top: 8px; font-family: 'JetBrains Mono', monospace">
+      * DOM numbers from @chenglou/pretext benchmarks (500 items, Chrome)
+    </div>
+  </section>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// Minimal line-breaking engine (mirrors pretext-rs algorithm in JS)
+// ═══════════════════════════════════════════════════════════════════
+
+const LINE_COLORS = ['#00d4ff','#ff6b9d','#7c5cfc','#00e5a0','#ffb347','#ff6b6b'];
+
+function isCJK(c) {
+  const cp = c.codePointAt(0);
+  return (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3400 && cp <= 0x4DBF) ||
+         (cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF) ||
+         (cp >= 0xFF01 && cp <= 0xFF60) || (cp >= 0x3000 && cp <= 0x303F);
+}
+
+function measureText(text, charW, cjkW) {
+  let w = 0;
+  for (const c of text) w += isCJK(c) ? cjkW : charW;
+  return w;
+}
+
+function layoutText(text, maxWidth, charW = 7.5, cjkW = 14) {
+  if (!text) return [{ text: '', width: 0 }];
+
+  // Segment: split into words and CJK chars
+  const segments = [];
+  let buf = '';
+  for (const c of text) {
+    if (isCJK(c)) {
+      if (buf) { segments.push(buf); buf = ''; }
+      segments.push(c);
+    } else if (c === ' ') {
+      if (buf) { segments.push(buf); buf = ''; }
+      segments.push(' ');
+    } else {
+      buf += c;
+    }
+  }
+  if (buf) segments.push(buf);
+
+  // Line break
+  const lines = [];
+  let lineText = '';
+  let lineW = 0;
+
+  for (const seg of segments) {
+    const segW = measureText(seg, charW, cjkW);
+
+    if (seg === ' ') {
+      lineText += ' ';
+      lineW += charW;
+      continue;
+    }
+
+    if (lineW + segW > maxWidth && lineText.trim()) {
+      lines.push({ text: lineText.trimEnd(), width: lineW });
+      lineText = seg;
+      lineW = segW;
+    } else {
+      lineText += seg;
+      lineW += segW;
+    }
+  }
+
+  if (lineText.trim()) {
+    lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), charW, cjkW) });
+  }
+
+  return lines.length ? lines : [{ text: '', width: 0 }];
+}
+
+// Variable-width layout (streaming API simulation)
+function layoutStreaming(text, widthPerLine, charW = 7.5) {
+  const segments = [];
+  let buf = '';
+  for (const c of text) {
+    if (c === ' ') {
+      if (buf) { segments.push(buf); buf = ''; }
+      segments.push(' ');
+    } else { buf += c; }
+  }
+  if (buf) segments.push(buf);
+
+  const lines = [];
+  let lineText = '';
+  let lineW = 0;
+  let lineIdx = 0;
+
+  for (const seg of segments) {
+    const segW = measureText(seg, charW, 14);
+    const maxW = widthPerLine(lineIdx);
+
+    if (seg === ' ') {
+      lineText += ' ';
+      lineW += charW;
+      continue;
+    }
+
+    if (lineW + segW > maxW && lineText.trim()) {
+      lines.push({ text: lineText.trimEnd(), width: lineW, maxWidth: maxW });
+      lineIdx++;
+      lineText = seg;
+      lineW = segW;
+    } else {
+      lineText += seg;
+      lineW += segW;
+    }
+  }
+
+  if (lineText.trim()) {
+    lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), charW, 14), maxWidth: widthPerLine(lineIdx) });
+  }
+
+  return lines;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Rendering
+// ═══════════════════════════════════════════════════════════════════
+
+function renderLines(container, lines, maxWidth) {
+  const existing = container.children;
+  const lineCount = lines.length;
+
+  // Reuse DOM nodes where possible
+  while (container.children.length > lineCount) {
+    container.removeChild(container.lastChild);
+  }
+
+  for (let i = 0; i < lineCount; i++) {
+    const line = lines[i];
+    const color = LINE_COLORS[i % LINE_COLORS.length];
+    let el = existing[i];
+
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'layout-line';
+      el.innerHTML = `
+        <div class="line-bg"></div>
+        <div class="line-num"></div>
+        <div class="line-text"></div>
+        <div class="line-width"></div>
+      `;
+      container.appendChild(el);
+    }
+
+    const bg = el.querySelector('.line-bg');
+    const num = el.querySelector('.line-num');
+    const text = el.querySelector('.line-text');
+    const width = el.querySelector('.line-width');
+
+    bg.style.background = color;
+    bg.style.width = Math.min(line.width, maxWidth) + 'px';
+    num.textContent = i + 1;
+    num.style.color = color;
+    text.textContent = line.text;
+    width.textContent = Math.round(line.width) + 'px';
+    width.style.color = color;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Section 1: Live Reflow
+// ═══════════════════════════════════════════════════════════════════
+
+const DEMO_TEXT = "The quick brown fox jumps over the lazy dog. This sentence demonstrates real-time text reflow as you resize the container width.";
+
+const widthSlider = document.getElementById('width-slider');
+const widthValue = document.getElementById('width-value');
+const reflowBox = document.getElementById('reflow-box');
+const reflowLines = document.getElementById('reflow-lines');
+const reflowWidth = document.getElementById('reflow-width');
+const resizeHandle = document.getElementById('resize-handle');
+const layoutTimer = document.getElementById('layout-timer');
+
+let layoutCount = 0;
+
+function updateReflow(maxW) {
+  const t0 = performance.now();
+  const lines = layoutText(DEMO_TEXT, maxW);
+  const t1 = performance.now();
+  layoutCount++;
+
+  renderLines(reflowLines, lines, maxW);
+  reflowWidth.textContent = Math.round(maxW);
+  widthValue.textContent = Math.round(maxW) + 'px';
+  widthSlider.value = maxW;
+  reflowBox.style.maxWidth = maxW + 50 + 'px';
+
+  // Position handle
+  resizeHandle.style.left = (reflowBox.offsetLeft + Math.min(maxW + 32, reflowBox.offsetWidth)) + 'px';
+
+  // Flash timer
+  const us = ((t1 - t0) * 1000).toFixed(1);
+  layoutTimer.textContent = `${us}µs`;
+  layoutTimer.classList.add('flash');
+  clearTimeout(layoutTimer._t);
+  layoutTimer._t = setTimeout(() => layoutTimer.classList.remove('flash'), 800);
+}
+
+widthSlider.addEventListener('input', () => {
+  stopAutoResize();
+  updateReflow(+widthSlider.value);
+});
+
+// Drag handle
+let dragging = false;
+resizeHandle.addEventListener('mousedown', (e) => {
+  dragging = true;
+  resizeHandle.classList.add('dragging');
+  stopAutoResize();
+  e.preventDefault();
+});
+document.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  const rect = reflowBox.getBoundingClientRect();
+  const w = Math.max(80, Math.min(600, e.clientX - rect.left - 16));
+  updateReflow(w);
+});
+document.addEventListener('mouseup', () => {
+  dragging = false;
+  resizeHandle.classList.remove('dragging');
+});
+
+// Auto-resize animation
+let autoResizeRAF;
+let autoResizeActive = true;
+const autoIndicator = document.getElementById('auto-indicator');
+
+function autoResize(t) {
+  if (!autoResizeActive) return;
+  // Smooth sine wave between 120 and 520
+  const w = 320 + Math.sin(t / 1400) * 200;
+  updateReflow(w);
+  autoResizeRAF = requestAnimationFrame(autoResize);
+}
+
+function stopAutoResize() {
+  autoResizeActive = false;
+  cancelAnimationFrame(autoResizeRAF);
+  autoIndicator.classList.remove('active');
+}
+
+function startAutoResize() {
+  autoResizeActive = true;
+  autoIndicator.classList.add('active');
+  autoResizeRAF = requestAnimationFrame(autoResize);
+}
+
+// Start auto after 1s
+setTimeout(() => {
+  startAutoResize();
+  // Stop after 8s to not be annoying
+  setTimeout(stopAutoResize, 8000);
+}, 1000);
+
+// ═══════════════════════════════════════════════════════════════════
+// Section 2: Custom Text
+// ═══════════════════════════════════════════════════════════════════
+
+const customText = document.getElementById('custom-text');
+const customWidthSlider = document.getElementById('custom-width-slider');
+const customWidthValue = document.getElementById('custom-width-value');
+const customLines = document.getElementById('custom-lines');
+const customWidthDisplay = document.getElementById('custom-width-display');
+
+function updateCustom() {
+  const w = +customWidthSlider.value;
+  const lines = layoutText(customText.value, w);
+  renderLines(customLines, lines, w);
+  customWidthValue.textContent = w + 'px';
+  customWidthDisplay.textContent = w;
+  document.getElementById('custom-box').style.maxWidth = w + 50 + 'px';
+}
+
+customText.addEventListener('input', updateCustom);
+customWidthSlider.addEventListener('input', updateCustom);
+updateCustom();
+
+// ═══════════════════════════════════════════════════════════════════
+// Section 3: Inline Flow
+// ═══════════════════════════════════════════════════════════════════
+
+const inlineWidthSlider = document.getElementById('inline-width-slider');
+const inlineWidthValue = document.getElementById('inline-width-value');
+const inlineLines = document.getElementById('inline-lines');
+const inlineWidthDisplay = document.getElementById('inline-width-display');
+
+const INLINE_ITEMS = [
+  { text: 'Deploy to', atomic: false },
+  { text: '@staging', atomic: true },
+  { text: 'completed successfully in', atomic: false },
+  { text: '3.2s', atomic: true },
+  { text: 'with zero downtime. Pipeline', atomic: false },
+  { text: '#4821', atomic: true },
+  { text: 'passed all checks.', atomic: false },
+];
+
+function layoutInlineFlow(items, maxWidth, charW = 7.5) {
+  const lines = [];
+  let currentLine = [];
+  let lineW = 0;
+
+  for (const item of items) {
+    const itemW = item.atomic
+      ? measureText(item.text, charW, 14) + 20  // chip padding
+      : measureText(item.text, charW, 14);
+    const gap = currentLine.length > 0 ? charW : 0;
+
+    if (item.atomic) {
+      // Never break atomic items
+      if (lineW + gap + itemW > maxWidth && currentLine.length > 0) {
+        lines.push([...currentLine]);
+        currentLine = [item];
+        lineW = itemW;
+      } else {
+        currentLine.push(item);
+        lineW += gap + itemW;
+      }
+    } else {
+      // Try to fit, or break at words
+      const words = item.text.split(' ').filter(Boolean);
+      for (const word of words) {
+        const wordW = measureText(word, charW, 14);
+        const g = currentLine.length > 0 ? charW : 0;
+
+        if (lineW + g + wordW > maxWidth && currentLine.length > 0) {
+          lines.push([...currentLine]);
+          currentLine = [{ text: word, atomic: false }];
+          lineW = wordW;
+        } else {
+          // Merge with previous non-atomic item or create new
+          const last = currentLine[currentLine.length - 1];
+          if (last && !last.atomic) {
+            last.text += ' ' + word;
+          } else {
+            currentLine.push({ text: word, atomic: false });
+          }
+          lineW += g + wordW;
+        }
+      }
+    }
+  }
+
+  if (currentLine.length > 0) lines.push(currentLine);
+  return lines;
+}
+
+function renderInlineFlow(container, lines, maxWidth) {
+  container.innerHTML = '';
+
+  for (let i = 0; i < lines.length; i++) {
+    const lineEl = document.createElement('div');
+    lineEl.className = 'layout-line';
+    lineEl.style.flexWrap = 'wrap';
+    lineEl.style.gap = '4px';
+    lineEl.style.height = 'auto';
+    lineEl.style.minHeight = '28px';
+    lineEl.style.padding = '2px 0';
+
+    const color = LINE_COLORS[i % LINE_COLORS.length];
+
+    const numEl = document.createElement('div');
+    numEl.className = 'line-num';
+    numEl.textContent = i + 1;
+    numEl.style.color = color;
+    lineEl.appendChild(numEl);
+
+    for (const item of lines[i]) {
+      if (item.atomic) {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = item.text;
+        lineEl.appendChild(chip);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'line-text';
+        span.textContent = item.text;
+        lineEl.appendChild(span);
+      }
+    }
+
+    container.appendChild(lineEl);
+  }
+}
+
+function updateInline() {
+  const w = +inlineWidthSlider.value;
+  const lines = layoutInlineFlow(INLINE_ITEMS, w);
+  renderInlineFlow(inlineLines, lines, w);
+  inlineWidthValue.textContent = w + 'px';
+  inlineWidthDisplay.textContent = w;
+  document.getElementById('inline-box').style.maxWidth = w + 50 + 'px';
+}
+
+inlineWidthSlider.addEventListener('input', updateInline);
+updateInline();
+
+// ═══════════════════════════════════════════════════════════════════
+// Section 4: Streaming (text around obstacle)
+// ═══════════════════════════════════════════════════════════════════
+
+const STREAM_TEXT = "The quick brown fox jumps over the lazy dog and keeps on running through the fields of golden wheat under the bright summer sun while birds sing overhead";
+
+const streamBox = document.getElementById('stream-box');
+const streamLines = document.getElementById('stream-lines');
+const obstacle = document.getElementById('obstacle');
+
+let obstacleX = 300, obstacleY = 56, obstacleW = 140, obstacleH = 56;
+
+function updateObstacleStyle() {
+  obstacle.style.left = obstacleX + 'px';
+  obstacle.style.top = obstacleY + 'px';
+  obstacle.style.width = obstacleW + 'px';
+  obstacle.style.height = obstacleH + 'px';
+}
+
+function updateStreaming() {
+  const boxW = streamBox.clientWidth - 32;
+  const lineH = 28;
+
+  const widthFn = (lineIdx) => {
+    const lineTop = lineIdx * lineH;
+    const lineBot = lineTop + lineH;
+    // Does this line overlap the obstacle?
+    if (lineBot > obstacleY && lineTop < obstacleY + obstacleH) {
+      return Math.max(40, obstacleX - 16);
+    }
+    return boxW;
+  };
+
+  const lines = layoutStreaming(STREAM_TEXT, widthFn);
+  renderLines(streamLines, lines, boxW);
+}
+
+updateObstacleStyle();
+updateStreaming();
+
+// Drag obstacle
+let dragObs = false, dragOffX, dragOffY;
+obstacle.addEventListener('mousedown', (e) => {
+  dragObs = true;
+  const r = obstacle.getBoundingClientRect();
+  dragOffX = e.clientX - r.left;
+  dragOffY = e.clientY - r.top;
+  obstacle.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+document.addEventListener('mousemove', (e) => {
+  if (!dragObs) return;
+  const boxR = streamBox.getBoundingClientRect();
+  obstacleX = Math.max(60, Math.min(boxR.width - obstacleW - 16, e.clientX - boxR.left - dragOffX));
+  obstacleY = Math.max(0, Math.min(200, e.clientY - boxR.top - dragOffY));
+  updateObstacleStyle();
+  updateStreaming();
+});
+document.addEventListener('mouseup', () => {
+  dragObs = false;
+  obstacle.style.cursor = 'grab';
+});
+
+// Gentle obstacle float animation
+let obsAnimActive = true;
+function animateObstacle(t) {
+  if (!obsAnimActive || dragObs) { requestAnimationFrame(animateObstacle); return; }
+  obstacleX = 250 + Math.sin(t / 2000) * 100;
+  obstacleY = 40 + Math.sin(t / 1500) * 30;
+  updateObstacleStyle();
+  updateStreaming();
+  requestAnimationFrame(animateObstacle);
+}
+requestAnimationFrame(animateObstacle);
+
+// Stop float on interaction
+obstacle.addEventListener('mousedown', () => { obsAnimActive = false; });
+
+// ═══════════════════════════════════════════════════════════════════
+// Section 5: Performance bars (animate in)
+// ═══════════════════════════════════════════════════════════════════
+
+const perfObserver = new IntersectionObserver((entries) => {
+  for (const entry of entries) {
+    if (entry.isIntersecting) {
+      setTimeout(() => {
+        const barLayout = document.getElementById('bar-layout');
+        const barBatched = document.getElementById('bar-batched');
+        const barReflow = document.getElementById('bar-reflow');
+
+        barLayout.style.width = '0.5%';
+        barLayout.setAttribute('data-value', '~0.09 µs');
+        barLayout.style.color = 'var(--accent)';
+
+        barBatched.style.width = '9%';
+        barBatched.setAttribute('data-value', '3.7 µs');
+        barBatched.style.color = 'var(--orange)';
+
+        barReflow.style.width = '100%';
+        barReflow.setAttribute('data-value', '41.7 µs');
+        barReflow.style.color = 'var(--accent2)';
+      }, 300);
+
+      perfObserver.disconnect();
+    }
+  }
+}, { threshold: 0.3 });
+perfObserver.observe(document.getElementById('bar-reflow').parentElement);
+
+// ═══════════════════════════════════════════════════════════════════
+// Hero counter animation
+// ═══════════════════════════════════════════════════════════════════
+
+const perfCounter = document.getElementById('perf-counter');
+let counterTarget = 0.09;
+let counterCurrent = 5.0;
+
+function animateCounter() {
+  counterCurrent += (counterTarget - counterCurrent) * 0.03;
+  if (Math.abs(counterCurrent - counterTarget) < 0.005) {
+    counterCurrent = counterTarget;
+  } else {
+    requestAnimationFrame(animateCounter);
+  }
+  perfCounter.textContent = counterCurrent.toFixed(2);
+}
+setTimeout(animateCounter, 500);
+
+// ═══════════════════════════════════════════════════════════════════
+// Window resize
+// ═══════════════════════════════════════════════════════════════════
+
+window.addEventListener('resize', () => {
+  updateStreaming();
+});
+
+// Init
+updateReflow(400);
+</script>
+
+</body>
+</html>
