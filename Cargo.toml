@@ -41,3 +41,7 @@ crate-type = ["cdylib", "rlib"]
 [[example]]
 name = "basic"
 path = "examples/basic.rs"
+
+[[example]]
+name = "demo_svg"
+path = "examples/demo_svg.rs"
