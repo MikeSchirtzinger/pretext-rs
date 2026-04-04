@@ -32,6 +32,8 @@ pub mod inline_flow;
 pub mod line_break;
 pub mod types;
 pub mod unicode;
+#[cfg(feature = "wasm")]
+pub mod wasm_api;
 
 use unicode_segmentation::UnicodeSegmentation;
 

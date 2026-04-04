@@ -1,11 +1,10 @@
-/// Canvas measurement backend (WASM only).
-///
-/// Uses the browser's `canvas.measureText()` as the font oracle — this gives
-/// pixel-accurate measurements that match what the DOM would render.
-/// This is the same approach as the original TypeScript pretext.
-///
-/// Requires the `wasm` feature flag.
-#![cfg(feature = "wasm")]
+//! Canvas measurement backend (WASM only).
+//!
+//! Uses the browser's `canvas.measureText()` as the font oracle — this gives
+//! pixel-accurate measurements that match what the DOM would render.
+//! This is the same approach as the original TypeScript pretext.
+//!
+//! Requires the `wasm` feature flag.
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -136,7 +135,9 @@ impl CanvasBackend {
         // Fall back to hidden DOM canvas
         let window = web_sys::window().ok_or("no window")?;
         let document = window.document().ok_or("no document")?;
-        let canvas: HtmlCanvasElement = document.create_element("canvas")?.dyn_into()?;
+        let canvas: HtmlCanvasElement = document.create_element("canvas")?
+            .dyn_into()
+            .map_err(|e| JsValue::from(e))?;
         canvas.set_width(1);
         canvas.set_height(1);
 
@@ -144,6 +145,7 @@ impl CanvasBackend {
             .get_context("2d")?
             .ok_or_else(|| JsValue::from_str("failed to get 2d context"))?
             .dyn_into()
+            .map_err(|e| JsValue::from(e))
     }
 
     /// Clear the measurement cache. Call after font changes or when

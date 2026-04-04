@@ -10,7 +10,7 @@ categories = ["text-processing", "wasm", "rendering"]
 
 [features]
 default = []
-wasm = ["dep:wasm-bindgen", "dep:web-sys", "dep:js-sys"]
+wasm = ["dep:wasm-bindgen", "dep:web-sys", "dep:js-sys", "dep:serde_json"]
 fontdue = ["dep:fontdue"]
 
 [dependencies]
@@ -28,6 +28,9 @@ web-sys = { version = "0.3", features = [
     "Window",
 ], optional = true }
 js-sys = { version = "0.3", optional = true }
+
+# JSON parsing for WASM batch API
+serde_json = { version = "1.0", optional = true }
 
 # Native font backend (optional)
 fontdue = { version = "0.9", optional = true }

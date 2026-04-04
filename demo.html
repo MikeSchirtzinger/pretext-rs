@@ -17,6 +17,7 @@
     --accent3: #7c5cfc;
     --green: #00e5a0;
     --orange: #ffb347;
+    --rust: #ff8c42;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -35,7 +36,6 @@
     padding: 48px 24px 80px;
   }
 
-  /* ── Hero ────────────────────────────────────────────── */
   .hero { text-align: center; margin-bottom: 56px; }
 
   .hero h1 {
@@ -47,321 +47,198 @@
     letter-spacing: -1px;
   }
 
-  .hero .tagline {
-    color: var(--dim);
-    font-size: 1rem;
-    margin-top: 8px;
-  }
+  .hero .tagline { color: var(--dim); font-size: 1rem; margin-top: 8px; }
 
-  .hero .stats {
-    display: flex;
-    justify-content: center;
-    gap: 32px;
-    margin-top: 20px;
-  }
+  .hero .stats { display: flex; justify-content: center; gap: 32px; margin-top: 20px; }
 
   .hero .stat-value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--accent);
+    font-size: 1.5rem; font-weight: 700; color: var(--accent);
   }
 
   .hero .stat-label {
-    font-size: 0.7rem;
-    color: var(--dim);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-top: 2px;
+    font-size: 0.7rem; color: var(--dim);
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;
   }
 
-  /* ── Sections ───────────────────────────────────────── */
+  .hero .stat-value.loading { color: var(--dim); }
+
   section { margin-bottom: 48px; }
 
   section h2 {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--accent);
+    font-size: 1rem; font-weight: 700; color: var(--accent);
     margin-bottom: 4px;
   }
 
   section .subtitle {
-    font-size: 0.8rem;
-    color: var(--dim);
-    font-style: italic;
-    margin-bottom: 16px;
+    font-size: 0.8rem; color: var(--dim);
+    font-style: italic; margin-bottom: 16px;
   }
 
-  /* ── Layout Box ─────────────────────────────────────── */
   .layout-box {
-    background: var(--bg2);
-    border: 1px solid var(--dim);
-    border-radius: 8px;
-    padding: 16px;
-    position: relative;
-    overflow: hidden;
+    background: var(--bg2); border: 1px solid var(--dim);
+    border-radius: 8px; padding: 16px; position: relative; overflow: hidden;
   }
 
   .layout-box .width-indicator {
-    position: absolute;
-    top: 0; right: 0;
-    background: var(--bg3);
-    padding: 4px 10px;
+    position: absolute; top: 0; right: 0;
+    background: var(--bg3); padding: 4px 10px;
     border-radius: 0 8px 0 8px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--dim);
+    font-size: 0.7rem; color: var(--dim);
   }
-
   .layout-box .width-indicator span { color: var(--accent); font-weight: 700; }
 
   .layout-line {
-    display: flex;
-    align-items: center;
-    height: 28px;
-    position: relative;
-    transition: all 0.2s ease;
+    display: flex; align-items: center; height: 28px;
+    position: relative; transition: all 0.2s ease;
   }
 
   .layout-line .line-bg {
-    position: absolute;
-    left: 0; top: 2px; bottom: 2px;
-    border-radius: 3px;
-    opacity: 0.08;
+    position: absolute; left: 0; top: 2px; bottom: 2px;
+    border-radius: 3px; opacity: 0.08;
     transition: width 0.2s ease;
   }
 
   .layout-line .line-num {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
-    width: 18px;
-    text-align: right;
-    opacity: 0.4;
-    margin-right: 8px;
-    flex-shrink: 0;
+    font-size: 0.6rem; width: 18px; text-align: right;
+    opacity: 0.4; margin-right: 8px; flex-shrink: 0;
     position: relative; z-index: 1;
   }
 
   .layout-line .line-text {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    white-space: pre;
+    font-size: 0.85rem; white-space: pre;
     position: relative; z-index: 1;
   }
 
   .layout-line .line-width {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
-    margin-left: auto;
-    opacity: 0.35;
-    flex-shrink: 0;
-    padding-left: 8px;
+    font-size: 0.6rem; margin-left: auto;
+    opacity: 0.35; flex-shrink: 0; padding-left: 8px;
     position: relative; z-index: 1;
   }
 
-  /* ── Slider ─────────────────────────────────────────── */
   .slider-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
   }
-
   .slider-row label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--dim);
-    white-space: nowrap;
+    font-size: 0.75rem; color: var(--dim); white-space: nowrap;
   }
-
   input[type="range"] {
-    -webkit-appearance: none;
-    flex: 1; height: 4px;
-    background: var(--dim);
-    border-radius: 2px;
-    outline: none;
+    -webkit-appearance: none; flex: 1; height: 4px;
+    background: var(--dim); border-radius: 2px; outline: none;
   }
-
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 16px; height: 16px;
-    background: var(--accent);
-    border-radius: 50%;
-    cursor: pointer;
+    -webkit-appearance: none; width: 16px; height: 16px;
+    background: var(--accent); border-radius: 50%; cursor: pointer;
     box-shadow: 0 0 8px rgba(0,212,255,0.4);
   }
-
   .slider-value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--accent);
-    font-weight: 700;
-    min-width: 50px;
-    text-align: right;
+    font-size: 0.8rem; color: var(--accent); font-weight: 700;
+    min-width: 50px; text-align: right;
   }
 
-  /* ── Chip ────────────────────────────────────────────── */
   .chip {
-    display: inline-flex;
-    align-items: center;
-    background: var(--bg3);
-    border: 1px solid var(--accent3);
-    border-radius: 12px;
-    padding: 2px 10px;
+    display: inline-flex; align-items: center;
+    background: var(--bg3); border: 1px solid var(--accent3);
+    border-radius: 12px; padding: 2px 10px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--accent3);
-    font-weight: 600;
-    white-space: nowrap;
+    font-size: 0.8rem; color: var(--accent3);
+    font-weight: 600; white-space: nowrap;
   }
 
-  /* ── Perf ────────────────────────────────────────────── */
-  .perf-row {
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-    height: 32px;
-  }
-
+  .perf-row { display: flex; align-items: center; margin-bottom: 10px; height: 32px; }
   .perf-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    width: 140px;
-    text-align: right;
+    font-size: 0.7rem; width: 160px; text-align: right;
     padding-right: 12px;
-    color: var(--fg);
   }
-
   .perf-bar-bg {
-    flex: 1;
-    height: 22px;
+    flex: 1; height: 22px;
     background: rgba(255,255,255,0.03);
-    border-radius: 4px;
-    overflow: hidden;
-    position: relative;
+    border-radius: 4px; overflow: hidden;
   }
-
   .perf-bar-fill {
-    height: 100%;
-    border-radius: 4px;
+    height: 100%; border-radius: 4px;
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    font-weight: 700;
-    min-width: fit-content;
-    white-space: nowrap;
   }
-
   .perf-bar-value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    font-weight: 700;
-    margin-left: 8px;
-    white-space: nowrap;
-    min-width: 80px;
+    font-size: 0.7rem; font-weight: 700;
+    margin-left: 8px; white-space: nowrap; min-width: 90px;
   }
 
   .bench-btn {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    background: var(--bg3);
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    border-radius: 6px;
-    padding: 8px 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-top: 12px;
+    font-size: 0.8rem; background: var(--bg3);
+    color: var(--accent); border: 1px solid var(--accent);
+    border-radius: 6px; padding: 8px 20px; cursor: pointer;
+    transition: all 0.2s; margin-top: 12px;
   }
-
   .bench-btn:hover { background: rgba(0,212,255,0.1); }
   .bench-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .bench-note {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--dim);
-    margin-top: 10px;
-    line-height: 1.5;
+    font-size: 0.65rem; color: var(--dim); margin-top: 10px; line-height: 1.5;
   }
 
-  /* ── Textarea ───────────────────────────────────────── */
   textarea {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--dim);
-    border-radius: 6px;
-    color: var(--fg);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    padding: 10px;
-    resize: vertical;
-    min-height: 48px;
-    outline: none;
+    width: 100%; background: var(--bg3); border: 1px solid var(--dim);
+    border-radius: 6px; color: var(--fg);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+    padding: 10px; resize: vertical; min-height: 48px; outline: none;
     margin-bottom: 12px;
   }
-
   textarea:focus { border-color: var(--accent); }
 
   .auto-resize-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--accent2);
-    margin-left: 12px;
-    opacity: 0;
-    transition: opacity 0.3s;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+    color: var(--accent2); margin-left: 12px;
+    opacity: 0; transition: opacity 0.3s;
   }
-
   .auto-resize-indicator.active { opacity: 1; }
-
   .auto-resize-indicator .dot {
-    width: 6px; height: 6px;
-    background: var(--accent2);
-    border-radius: 50%;
-    animation: pulse 0.8s infinite;
+    width: 6px; height: 6px; background: var(--accent2);
+    border-radius: 50%; animation: pulse 0.8s infinite;
   }
-
   @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
 
   .layout-timer {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--green);
-    opacity: 0;
-    transition: opacity 0.2s;
-    margin-left: 8px;
+    font-size: 0.65rem; color: var(--green);
+    opacity: 0; transition: opacity 0.2s; margin-left: 8px;
   }
-
   .layout-timer.flash { opacity: 1; }
 
-  .fade-in {
-    opacity: 0;
-    transform: translateY(16px);
-    animation: fadeIn 0.6s forwards;
-  }
-
+  .fade-in { opacity: 0; transform: translateY(16px); animation: fadeIn 0.6s forwards; }
   @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+  .init-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; color: var(--dim); text-align: center;
+    margin-top: 8px;
+  }
+  .init-status.ready { color: var(--green); }
+  .init-status.error { color: var(--accent2); }
 </style>
 </head>
 <body>
 <div class="container">
 
-  <!-- Hero -->
   <div class="hero fade-in">
     <h1>pretext-rs</h1>
     <div class="tagline">DOM-free text measurement and line-breaking engine</div>
     <div class="stats">
       <div class="stat">
-        <div class="stat-value" id="hero-perf">—</div>
-        <div class="stat-label">µs / layout</div>
+        <div class="stat-value loading" id="hero-perf">...</div>
+        <div class="stat-label">µs / layout (Rust WASM)</div>
       </div>
       <div class="stat">
         <div class="stat-value">0</div>
@@ -372,6 +249,7 @@
         <div class="stat-label">phases</div>
       </div>
     </div>
+    <div class="init-status" id="init-status">Loading WASM + TypeScript modules...</div>
   </div>
 
   <!-- Section 1: Live Reflow -->
@@ -430,13 +308,10 @@
     <div class="layout-box" id="stream-box" style="min-height:220px;position:relative">
       <div id="stream-lines"></div>
       <div id="obstacle" style="
-        position:absolute;
-        border:1px dashed var(--accent2);
-        border-radius:8px;
-        background:rgba(255,107,157,0.06);
-        display:flex; align-items:center; justify-content:center;
-        font-family:'JetBrains Mono',monospace; font-size:0.65rem;
-        color:var(--accent2); opacity:0.7;
+        position:absolute; border:1px dashed var(--accent2); border-radius:8px;
+        background:rgba(255,107,157,0.06); display:flex; align-items:center;
+        justify-content:center; font-family:'JetBrains Mono',monospace;
+        font-size:0.65rem; color:var(--accent2); opacity:0.7;
         cursor:grab; user-select:none;
       ">drag me</div>
     </div>
@@ -445,13 +320,18 @@
   <!-- Section 5: Live Benchmark -->
   <section class="fade-in" style="animation-delay:0.75s">
     <h2>Live Benchmark</h2>
-    <div class="subtitle">Measured right now, in this browser, on your machine — not borrowed numbers</div>
+    <div class="subtitle">Measured right now, in this browser, on your machine</div>
 
     <div style="margin-top:16px">
       <div class="perf-row">
-        <div class="perf-label" style="color:var(--accent)">pretext layout()</div>
-        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-pretext" style="width:0;background:var(--accent)"></div></div>
-        <div class="perf-bar-value" id="val-pretext" style="color:var(--accent)">—</div>
+        <div class="perf-label" style="color:var(--rust)">pretext-rs (Rust/WASM)</div>
+        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-rust" style="width:0;background:var(--rust)"></div></div>
+        <div class="perf-bar-value" id="val-rust" style="color:var(--rust)">—</div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label" style="color:var(--accent)">pretext (TS original)</div>
+        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-ts" style="width:0;background:var(--accent)"></div></div>
+        <div class="perf-bar-value" id="val-ts" style="color:var(--accent)">—</div>
       </div>
       <div class="perf-row">
         <div class="perf-label" style="color:var(--orange)">canvas.measureText</div>
@@ -470,26 +350,89 @@
       </div>
     </div>
 
-    <button class="bench-btn" id="run-bench">Run Benchmark (500 texts × 3 methods)</button>
+    <button class="bench-btn" id="run-bench" disabled>Loading modules...</button>
 
     <div class="bench-note" id="bench-status"></div>
     <div class="bench-note" style="margin-top:6px">
-      Each method measures 500 text blocks at varying widths.<br>
-      pretext = pure arithmetic over cached widths (no DOM/canvas).<br>
-      canvas = CanvasRenderingContext2d.measureText() per segment.<br>
-      DOM batched = write all divs, then read all heights.<br>
-      DOM interleaved = write one div + read height, repeat (triggers reflow per read).
+      All 5 methods benchmark the layout hot path on 500 identical text samples.<br>
+      <b>pretext-rs</b> = Rust compiled to WASM, layout() over pre-computed segment widths.<br>
+      <b>pretext (TS)</b> = @chenglou/pretext original, same two-phase architecture in JS.<br>
+      <b>canvas</b> = CanvasRenderingContext2d.measureText() per word segment.<br>
+      <b>DOM batched</b> = write all divs, then read all heights (one reflow).<br>
+      <b>DOM interleaved</b> = write+read per div (forces reflow per read).<br>
     </div>
   </section>
 
 </div>
 
-<!-- Hidden benchmark container -->
 <div id="bench-container" style="position:absolute;left:-9999px;top:0;width:300px;font:16px Inter,sans-serif"></div>
 
-<script>
+<!-- Import map for ESM modules -->
+<script type="importmap">
+{
+  "imports": {
+    "@chenglou/pretext": "./node_modules/@chenglou/pretext/dist/layout.js"
+  }
+}
+</script>
+
+<script type="module">
 // ═══════════════════════════════════════════════════════════════════
-// Line-breaking engine (mirrors pretext-rs core algorithm)
+// Load both engines
+// ═══════════════════════════════════════════════════════════════════
+
+import initWasm, {
+  pretextPrepare, pretextLayout, pretextFree,
+  pretextPrepareBatch, pretextLayoutBatch, pretextFreeBatch
+} from './pkg/pretext.js';
+
+import {
+  prepare as tsPrepare,
+  layout as tsLayout
+} from '@chenglou/pretext';
+
+const initStatus = document.getElementById('init-status');
+const benchBtn = document.getElementById('run-bench');
+
+let wasmReady = false;
+let tsReady = false;
+
+try {
+  await initWasm();
+  wasmReady = true;
+} catch (e) {
+  console.error('WASM init failed:', e);
+  initStatus.textContent = 'WASM load failed: ' + e.message;
+  initStatus.classList.add('error');
+}
+
+// Test TS module
+try {
+  const testPrep = tsPrepare('test', '16px Inter');
+  const testResult = tsLayout(testPrep, 100, 24);
+  tsReady = true;
+} catch (e) {
+  console.error('TS pretext init failed:', e);
+}
+
+if (wasmReady && tsReady) {
+  initStatus.textContent = 'Rust WASM + TypeScript pretext loaded';
+  initStatus.classList.add('ready');
+  benchBtn.disabled = false;
+  benchBtn.textContent = 'Run Benchmark (500 texts × 5 methods)';
+} else if (wasmReady) {
+  initStatus.textContent = 'Rust WASM loaded. TS pretext unavailable (needs canvas — run in browser).';
+  initStatus.classList.add('ready');
+  benchBtn.disabled = false;
+  benchBtn.textContent = 'Run Benchmark (500 texts × 4 methods)';
+} else {
+  initStatus.textContent = 'Module load failed. Serve via HTTP (not file://).';
+  initStatus.classList.add('error');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// JS line-breaking for interactive sections (keeps them working
+// even before WASM loads — the benchmark uses the real engines)
 // ═══════════════════════════════════════════════════════════════════
 
 const LINE_COLORS = ['#00d4ff','#ff6b9d','#7c5cfc','#00e5a0','#ffb347','#ff6b6b'];
@@ -501,86 +444,43 @@ function isCJK(c) {
          (cp>=0xFF01&&cp<=0xFF60)||(cp>=0x3000&&cp<=0x303F);
 }
 
-function measureText(text, charW, cjkW) {
-  let w = 0;
-  for (const c of text) w += isCJK(c) ? cjkW : charW;
-  return w;
+function measureText(text, charW=7.5, cjkW=14) {
+  let w=0; for (const c of text) w += isCJK(c) ? cjkW : charW; return w;
 }
 
-// Simulates pretext's two-phase: prepare() builds segment widths,
-// layout() does pure arithmetic over them (the fast path)
-function prepare(text, charW = 7.5, cjkW = 14) {
-  const segments = [];
-  let buf = '';
+function jsLayout(text, maxWidth, charW=7.5, cjkW=14) {
+  if (!text) return [{text:'',width:0}];
+  const segs=[]; let buf='';
   for (const c of text) {
-    if (isCJK(c)) {
-      if (buf) { segments.push({ text: buf, width: measureText(buf, charW, cjkW), isSpace: false }); buf = ''; }
-      segments.push({ text: c, width: cjkW, isSpace: false });
-    } else if (c === ' ') {
-      if (buf) { segments.push({ text: buf, width: measureText(buf, charW, cjkW), isSpace: false }); buf = ''; }
-      segments.push({ text: ' ', width: charW, isSpace: true });
-    } else {
-      buf += c;
-    }
+    if (isCJK(c)) { if(buf){segs.push(buf);buf='';} segs.push(c); }
+    else if (c===' ') { if(buf){segs.push(buf);buf='';} segs.push(' '); }
+    else buf+=c;
   }
-  if (buf) segments.push({ text: buf, width: measureText(buf, charW, cjkW), isSpace: false });
-  return segments;
-}
-
-// The hot path — pure arithmetic, no measurement, no DOM
-function layout(segments, maxWidth) {
-  if (!segments.length) return [{ text: '', width: 0 }];
-  const lines = [];
-  let lineText = '', lineW = 0;
-  for (const seg of segments) {
-    if (seg.isSpace) { lineText += ' '; lineW += seg.width; continue; }
-    if (lineW + seg.width > maxWidth && lineText.trim()) {
-      lines.push({ text: lineText.trimEnd(), width: lineW });
-      lineText = seg.text; lineW = seg.width;
-    } else {
-      lineText += seg.text; lineW += seg.width;
-    }
+  if(buf) segs.push(buf);
+  const lines=[]; let lt='',lw=0;
+  for (const s of segs) {
+    if(s===' '){lt+=' ';lw+=charW;continue;}
+    const sw=measureText(s,charW,cjkW);
+    if(lw+sw>maxWidth&&lt.trim()){lines.push({text:lt.trimEnd(),width:lw});lt=s;lw=sw;}
+    else{lt+=s;lw+=sw;}
   }
-  if (lineText.trim()) lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), 7.5, 14) });
-  return lines.length ? lines : [{ text: '', width: 0 }];
+  if(lt.trim()) lines.push({text:lt.trimEnd(),width:measureText(lt.trimEnd(),charW,cjkW)});
+  return lines.length?lines:[{text:'',width:0}];
 }
-
-function layoutStreaming(text, widthFn, charW = 7.5) {
-  const segs = prepare(text, charW, 14);
-  const lines = [];
-  let lineText = '', lineW = 0, li = 0;
-  for (const seg of segs) {
-    if (seg.isSpace) { lineText += ' '; lineW += seg.width; continue; }
-    if (lineW + seg.width > widthFn(li) && lineText.trim()) {
-      lines.push({ text: lineText.trimEnd(), width: lineW, maxWidth: widthFn(li) });
-      li++; lineText = seg.text; lineW = seg.width;
-    } else { lineText += seg.text; lineW += seg.width; }
-  }
-  if (lineText.trim()) lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), charW, 14), maxWidth: widthFn(li) });
-  return lines;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Rendering
-// ═══════════════════════════════════════════════════════════════════
 
 function renderLines(container, lines, maxWidth) {
-  while (container.children.length > lines.length) container.removeChild(container.lastChild);
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i], color = LINE_COLORS[i % LINE_COLORS.length];
-    let el = container.children[i];
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'layout-line';
-      el.innerHTML = '<div class="line-bg"></div><div class="line-num"></div><div class="line-text"></div><div class="line-width"></div>';
-      container.appendChild(el);
-    }
-    el.querySelector('.line-bg').style.cssText = `background:${color};width:${Math.min(line.width, maxWidth)}px`;
-    el.querySelector('.line-num').textContent = i + 1;
-    el.querySelector('.line-num').style.color = color;
-    el.querySelector('.line-text').textContent = line.text;
-    el.querySelector('.line-width').textContent = Math.round(line.width) + 'px';
-    el.querySelector('.line-width').style.color = color;
+  while(container.children.length>lines.length) container.removeChild(container.lastChild);
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i],color=LINE_COLORS[i%LINE_COLORS.length];
+    let el=container.children[i];
+    if(!el){el=document.createElement('div');el.className='layout-line';
+      el.innerHTML='<div class="line-bg"></div><div class="line-num"></div><div class="line-text"></div><div class="line-width"></div>';
+      container.appendChild(el);}
+    el.querySelector('.line-bg').style.cssText=`background:${color};width:${Math.min(line.width,maxWidth)}px`;
+    el.querySelector('.line-num').textContent=i+1;el.querySelector('.line-num').style.color=color;
+    el.querySelector('.line-text').textContent=line.text;
+    el.querySelector('.line-width').textContent=Math.round(line.width)+'px';
+    el.querySelector('.line-width').style.color=color;
   }
 }
 
@@ -589,322 +489,238 @@ function renderLines(container, lines, maxWidth) {
 // ═══════════════════════════════════════════════════════════════════
 
 const DEMO_TEXT = "The quick brown fox jumps over the lazy dog. This sentence demonstrates real-time text reflow as you resize the container width.";
-const preparedDemo = prepare(DEMO_TEXT);
+const widthSlider=document.getElementById('width-slider'), widthValue=document.getElementById('width-value');
+const reflowBox=document.getElementById('reflow-box'), reflowLines=document.getElementById('reflow-lines');
+const reflowWidth=document.getElementById('reflow-width'), layoutTimer=document.getElementById('layout-timer');
 
-const widthSlider = document.getElementById('width-slider');
-const widthValue = document.getElementById('width-value');
-const reflowBox = document.getElementById('reflow-box');
-const reflowLines = document.getElementById('reflow-lines');
-const reflowWidth = document.getElementById('reflow-width');
-const layoutTimer = document.getElementById('layout-timer');
+// Use WASM for reflow if available
+let wasmDemoHandle = null;
+if (wasmReady) wasmDemoHandle = pretextPrepare(DEMO_TEXT);
 
 function updateReflow(maxW) {
-  const t0 = performance.now();
-  // This is the hot path — layout() on pre-computed segment widths
-  const lines = layout(preparedDemo, maxW);
-  const t1 = performance.now();
-
+  let lines, us;
+  if (wasmReady && wasmDemoHandle) {
+    const t0=performance.now();
+    const lc = pretextLayout(wasmDemoHandle, maxW, 24);
+    const t1=performance.now();
+    us = ((t1-t0)*1000).toFixed(1);
+    // Still use JS for visual rendering (WASM returns count only)
+    lines = jsLayout(DEMO_TEXT, maxW);
+  } else {
+    const t0=performance.now();
+    lines = jsLayout(DEMO_TEXT, maxW);
+    us = ((performance.now()-t0)*1000).toFixed(1);
+  }
   renderLines(reflowLines, lines, maxW);
-  reflowWidth.textContent = Math.round(maxW);
-  widthValue.textContent = Math.round(maxW) + 'px';
-  widthSlider.value = maxW;
-  reflowBox.style.maxWidth = Math.max(maxW + 50, 200) + 'px';
-
-  const us = ((t1 - t0) * 1000).toFixed(1);
-  layoutTimer.textContent = `layout: ${us}µs`;
+  reflowWidth.textContent=Math.round(maxW);
+  widthValue.textContent=Math.round(maxW)+'px';
+  widthSlider.value=maxW;
+  reflowBox.style.maxWidth=Math.max(maxW+50,200)+'px';
+  layoutTimer.textContent=`${wasmReady?'WASM':'JS'}: ${us}µs`;
   layoutTimer.classList.add('flash');
   clearTimeout(layoutTimer._t);
-  layoutTimer._t = setTimeout(() => layoutTimer.classList.remove('flash'), 800);
+  layoutTimer._t=setTimeout(()=>layoutTimer.classList.remove('flash'),800);
 }
 
-widthSlider.addEventListener('input', () => { stopAutoResize(); updateReflow(+widthSlider.value); });
+widthSlider.addEventListener('input',()=>{stopAuto();updateReflow(+widthSlider.value);});
 
-// Auto-resize
-let autoRAF, autoActive = true;
-const autoInd = document.getElementById('auto-indicator');
-
-function autoResize(t) {
-  if (!autoActive) return;
-  updateReflow(320 + Math.sin(t / 1400) * 200);
-  autoRAF = requestAnimationFrame(autoResize);
-}
-function stopAutoResize() { autoActive = false; cancelAnimationFrame(autoRAF); autoInd.classList.remove('active'); }
-function startAutoResize() { autoActive = true; autoInd.classList.add('active'); autoRAF = requestAnimationFrame(autoResize); }
-
-setTimeout(() => { startAutoResize(); setTimeout(stopAutoResize, 8000); }, 1000);
+let autoRAF,autoActive=true;
+const autoInd=document.getElementById('auto-indicator');
+function autoResize(t){if(!autoActive)return;updateReflow(320+Math.sin(t/1400)*200);autoRAF=requestAnimationFrame(autoResize);}
+function stopAuto(){autoActive=false;cancelAnimationFrame(autoRAF);autoInd.classList.remove('active');}
+setTimeout(()=>{autoActive=true;autoInd.classList.add('active');autoRAF=requestAnimationFrame(autoResize);setTimeout(stopAuto,8000);},1000);
 
 // ═══════════════════════════════════════════════════════════════════
+// Sections 2-4 (same JS-based interactive demos as before)
+// ═══════════════════════════════════════════════════════════════════
+
 // Section 2: Custom Text
-// ═══════════════════════════════════════════════════════════════════
+const customText=document.getElementById('custom-text'),customSlider=document.getElementById('custom-width-slider');
+const customValue=document.getElementById('custom-width-value'),customLines=document.getElementById('custom-lines');
+const customDisplay=document.getElementById('custom-width-display');
+function updateCustom(){const w=+customSlider.value;renderLines(customLines,jsLayout(customText.value,w),w);
+  customValue.textContent=w+'px';customDisplay.textContent=w;document.getElementById('custom-box').style.maxWidth=Math.max(w+50,200)+'px';}
+customText.addEventListener('input',updateCustom);customSlider.addEventListener('input',updateCustom);updateCustom();
 
-const customText = document.getElementById('custom-text');
-const customSlider = document.getElementById('custom-width-slider');
-const customValue = document.getElementById('custom-width-value');
-const customLines = document.getElementById('custom-lines');
-const customDisplay = document.getElementById('custom-width-display');
-
-function updateCustom() {
-  const w = +customSlider.value;
-  const segs = prepare(customText.value);
-  renderLines(customLines, layout(segs, w), w);
-  customValue.textContent = w + 'px';
-  customDisplay.textContent = w;
-  document.getElementById('custom-box').style.maxWidth = Math.max(w + 50, 200) + 'px';
-}
-customText.addEventListener('input', updateCustom);
-customSlider.addEventListener('input', updateCustom);
-updateCustom();
-
-// ═══════════════════════════════════════════════════════════════════
 // Section 3: Inline Flow
-// ═══════════════════════════════════════════════════════════════════
+const INLINE_ITEMS=[{text:'Deploy to',atomic:false},{text:'@staging',atomic:true},{text:'completed successfully in',atomic:false},{text:'3.2s',atomic:true},{text:'with zero downtime. Pipeline',atomic:false},{text:'#4821',atomic:true},{text:'passed all checks.',atomic:false}];
+function layoutInline(items,maxW,cw=7.5){const lines=[];let cur=[],lw=0;
+  for(const item of items){const iw=measureText(item.text,cw,14)+(item.atomic?20:0),gap=cur.length?cw:0;
+    if(item.atomic){if(lw+gap+iw>maxW&&cur.length){lines.push([...cur]);cur=[item];lw=iw;}else{cur.push(item);lw+=gap+iw;}}
+    else{for(const word of item.text.split(' ').filter(Boolean)){const ww=measureText(word,cw,14),g=cur.length?cw:0;
+      if(lw+g+ww>maxW&&cur.length){lines.push([...cur]);cur=[{text:word,atomic:false}];lw=ww;}
+      else{const last=cur[cur.length-1];if(last&&!last.atomic)last.text+=' '+word;else cur.push({text:word,atomic:false});lw+=g+ww;}}}}
+  if(cur.length)lines.push(cur);return lines;}
+function renderInline(container,lines){container.innerHTML='';for(let i=0;i<lines.length;i++){const el=document.createElement('div');
+  el.className='layout-line';el.style.cssText='flex-wrap:wrap;gap:4px;height:auto;min-height:28px;padding:2px 0';
+  const color=LINE_COLORS[i%LINE_COLORS.length];const num=document.createElement('div');num.className='line-num';num.textContent=i+1;num.style.color=color;el.appendChild(num);
+  for(const item of lines[i]){if(item.atomic){const c=document.createElement('span');c.className='chip';c.textContent=item.text;el.appendChild(c);}
+  else{const s=document.createElement('span');s.className='line-text';s.textContent=item.text;el.appendChild(s);}}container.appendChild(el);}}
+const inlineSlider=document.getElementById('inline-width-slider'),inlineValue=document.getElementById('inline-width-value');
+const inlineDisplay=document.getElementById('inline-width-display'),inlineLinesEl=document.getElementById('inline-lines');
+function updateInline(){const w=+inlineSlider.value;renderInline(inlineLinesEl,layoutInline(INLINE_ITEMS,w));
+  inlineValue.textContent=w+'px';inlineDisplay.textContent=w;document.getElementById('inline-box').style.maxWidth=Math.max(w+50,200)+'px';}
+inlineSlider.addEventListener('input',updateInline);updateInline();
 
-const INLINE_ITEMS = [
-  { text: 'Deploy to', atomic: false },
-  { text: '@staging', atomic: true },
-  { text: 'completed successfully in', atomic: false },
-  { text: '3.2s', atomic: true },
-  { text: 'with zero downtime. Pipeline', atomic: false },
-  { text: '#4821', atomic: true },
-  { text: 'passed all checks.', atomic: false },
-];
-
-function layoutInline(items, maxWidth, charW = 7.5) {
-  const lines = []; let cur = [], lineW = 0;
-  for (const item of items) {
-    const iw = measureText(item.text, charW, 14) + (item.atomic ? 20 : 0);
-    const gap = cur.length ? charW : 0;
-    if (item.atomic) {
-      if (lineW + gap + iw > maxWidth && cur.length) { lines.push([...cur]); cur = [item]; lineW = iw; }
-      else { cur.push(item); lineW += gap + iw; }
-    } else {
-      for (const word of item.text.split(' ').filter(Boolean)) {
-        const ww = measureText(word, charW, 14), g = cur.length ? charW : 0;
-        if (lineW + g + ww > maxWidth && cur.length) {
-          lines.push([...cur]); cur = [{ text: word, atomic: false }]; lineW = ww;
-        } else {
-          const last = cur[cur.length - 1];
-          if (last && !last.atomic) last.text += ' ' + word; else cur.push({ text: word, atomic: false });
-          lineW += g + ww;
-        }
-      }
-    }
-  }
-  if (cur.length) lines.push(cur);
-  return lines;
-}
-
-function renderInline(container, lines) {
-  container.innerHTML = '';
-  for (let i = 0; i < lines.length; i++) {
-    const el = document.createElement('div');
-    el.className = 'layout-line';
-    el.style.cssText = 'flex-wrap:wrap;gap:4px;height:auto;min-height:28px;padding:2px 0';
-    const color = LINE_COLORS[i % LINE_COLORS.length];
-    const num = document.createElement('div');
-    num.className = 'line-num'; num.textContent = i + 1; num.style.color = color;
-    el.appendChild(num);
-    for (const item of lines[i]) {
-      if (item.atomic) {
-        const c = document.createElement('span'); c.className = 'chip'; c.textContent = item.text; el.appendChild(c);
-      } else {
-        const s = document.createElement('span'); s.className = 'line-text'; s.textContent = item.text; el.appendChild(s);
-      }
-    }
-    container.appendChild(el);
-  }
-}
-
-const inlineSlider = document.getElementById('inline-width-slider');
-const inlineValue = document.getElementById('inline-width-value');
-const inlineDisplay = document.getElementById('inline-width-display');
-const inlineLines = document.getElementById('inline-lines');
-
-function updateInline() {
-  const w = +inlineSlider.value;
-  renderInline(inlineLines, layoutInline(INLINE_ITEMS, w));
-  inlineValue.textContent = w + 'px';
-  inlineDisplay.textContent = w;
-  document.getElementById('inline-box').style.maxWidth = Math.max(w + 50, 200) + 'px';
-}
-inlineSlider.addEventListener('input', updateInline);
-updateInline();
+// Section 4: Streaming
+const STREAM_TEXT="The quick brown fox jumps over the lazy dog and keeps on running through the fields of golden wheat under the bright summer sun while birds sing overhead";
+const streamBox=document.getElementById('stream-box'),streamLinesEl=document.getElementById('stream-lines'),obstacle=document.getElementById('obstacle');
+let obsX=280,obsY=56,obsW=140,obsH=56,obsFloat=true;
+function updateObs(){obstacle.style.cssText+=`;left:${obsX}px;top:${obsY}px;width:${obsW}px;height:${obsH}px`;}
+function updateStream(){const boxW=streamBox.clientWidth-32,lh=28;
+  const segs=[];let buf='';for(const c of STREAM_TEXT){if(c===' '){if(buf){segs.push(buf);buf='';}segs.push(' ');}else buf+=c;}if(buf)segs.push(buf);
+  const lines=[];let lt='',lw=0,li=0;
+  for(const s of segs){if(s===' '){lt+=' ';lw+=7.5;continue;}const sw=measureText(s,7.5,14);
+    const mw=(()=>{const top=li*lh,bot=top+lh;return(bot>obsY&&top<obsY+obsH)?Math.max(40,obsX-16):boxW;})();
+    if(lw+sw>mw&&lt.trim()){lines.push({text:lt.trimEnd(),width:lw});li++;lt=s;lw=sw;}else{lt+=s;lw+=sw;}}
+  if(lt.trim())lines.push({text:lt.trimEnd(),width:measureText(lt.trimEnd(),7.5,14)});
+  renderLines(streamLinesEl,lines.length?lines:[{text:'',width:0}],boxW);}
+updateObs();updateStream();
+let dragObs=false,dox,doy;
+obstacle.addEventListener('mousedown',(e)=>{dragObs=true;obsFloat=false;dox=e.clientX-obsX;doy=e.clientY-obsY;obstacle.style.cursor='grabbing';e.preventDefault();});
+document.addEventListener('mousemove',(e)=>{if(!dragObs)return;const r=streamBox.getBoundingClientRect();
+  obsX=Math.max(60,Math.min(r.width-obsW-16,e.clientX-r.left-dox));obsY=Math.max(0,Math.min(200,e.clientY-r.top-doy));updateObs();updateStream();});
+document.addEventListener('mouseup',()=>{dragObs=false;obstacle.style.cursor='grab';});
+(function floatObs(t){if(obsFloat&&!dragObs){obsX=240+Math.sin(t/2000)*100;obsY=40+Math.sin(t/1500)*30;updateObs();updateStream();}requestAnimationFrame(floatObs);})(0);
+window.addEventListener('resize',updateStream);
 
 // ═══════════════════════════════════════════════════════════════════
-// Section 4: Streaming API (obstacle)
+// Section 5: REAL Benchmark — Rust WASM + TS Original + DOM
 // ═══════════════════════════════════════════════════════════════════
 
-const STREAM_TEXT = "The quick brown fox jumps over the lazy dog and keeps on running through the fields of golden wheat under the bright summer sun while birds sing overhead";
-const streamBox = document.getElementById('stream-box');
-const streamLinesEl = document.getElementById('stream-lines');
-const obstacle = document.getElementById('obstacle');
-
-let obsX = 280, obsY = 56, obsW = 140, obsH = 56;
-
-function updateObs() {
-  obstacle.style.cssText += `;left:${obsX}px;top:${obsY}px;width:${obsW}px;height:${obsH}px`;
-}
-
-function updateStream() {
-  const boxW = streamBox.clientWidth - 32;
-  const lh = 28;
-  const lines = layoutStreaming(STREAM_TEXT, (li) => {
-    const top = li * lh, bot = top + lh;
-    return (bot > obsY && top < obsY + obsH) ? Math.max(40, obsX - 16) : boxW;
-  });
-  renderLines(streamLinesEl, lines, boxW);
-}
-
-updateObs(); updateStream();
-
-let dragObs = false, dox, doy;
-obstacle.addEventListener('mousedown', (e) => { dragObs = true; obsFloat = false; dox = e.clientX - obsX; doy = e.clientY - obsY; obstacle.style.cursor = 'grabbing'; e.preventDefault(); });
-document.addEventListener('mousemove', (e) => {
-  if (!dragObs) return;
-  const r = streamBox.getBoundingClientRect();
-  obsX = Math.max(60, Math.min(r.width - obsW - 16, e.clientX - r.left - dox));
-  obsY = Math.max(0, Math.min(200, e.clientY - r.top - doy));
-  updateObs(); updateStream();
-});
-document.addEventListener('mouseup', () => { dragObs = false; obstacle.style.cursor = 'grab'; });
-
-let obsFloat = true;
-function floatObs(t) {
-  if (obsFloat && !dragObs) { obsX = 240 + Math.sin(t/2000)*100; obsY = 40 + Math.sin(t/1500)*30; updateObs(); updateStream(); }
-  requestAnimationFrame(floatObs);
-}
-requestAnimationFrame(floatObs);
-
-// ═══════════════════════════════════════════════════════════════════
-// Section 5: REAL Benchmark — runs in THIS browser, on YOUR machine
-// ═══════════════════════════════════════════════════════════════════
-
-const benchBtn = document.getElementById('run-bench');
 const benchStatus = document.getElementById('bench-status');
 const benchContainer = document.getElementById('bench-container');
-
-// Generate 500 varied text samples
-const SAMPLE_TEXTS = [];
 const WORDS = "the quick brown fox jumps over a lazy dog and runs through the field while the sun shines bright above the mountains in the distance where clouds gather slowly".split(' ');
-for (let i = 0; i < 500; i++) {
-  let s = '';
-  const len = 8 + Math.floor(Math.random() * 20);
-  for (let j = 0; j < len; j++) s += WORDS[Math.floor(Math.random() * WORDS.length)] + ' ';
-  SAMPLE_TEXTS.push(s.trim());
-}
+const SAMPLE_TEXTS = [];
+for (let i=0;i<500;i++){let s='';const len=8+Math.floor(Math.random()*20);for(let j=0;j<len;j++)s+=WORDS[Math.floor(Math.random()*WORDS.length)]+' ';SAMPLE_TEXTS.push(s.trim());}
 
 benchBtn.addEventListener('click', async () => {
   benchBtn.disabled = true;
-  benchStatus.textContent = 'Warming up...';
-  await new Promise(r => setTimeout(r, 100));
+  const results = {};
 
-  // ── 1. pretext layout() — pure arithmetic over pre-computed widths ──
-  benchStatus.textContent = 'Benchmarking: pretext layout() (500 texts × 10 widths)...';
-  await new Promise(r => setTimeout(r, 50));
+  // ── 1. pretext-rs (Rust/WASM) — actual compiled Rust hot path ──
+  if (wasmReady) {
+    benchStatus.textContent = 'Benchmarking: pretext-rs Rust/WASM layout() ...';
+    await new Promise(r => setTimeout(r, 50));
 
-  const prepared = SAMPLE_TEXTS.map(t => prepare(t));
-  // Warm up
-  for (let i = 0; i < 500; i++) layout(prepared[i], 200 + (i % 400));
+    // Prepare all 500 texts (one-time cost, not benchmarked)
+    const handles = [];
+    for (const t of SAMPLE_TEXTS) handles.push(pretextPrepare(t));
 
-  const t0 = performance.now();
-  for (let run = 0; run < 10; run++) {
-    for (let i = 0; i < 500; i++) {
-      layout(prepared[i], 100 + (i % 500));
-    }
+    // Warm up
+    for (let i=0;i<500;i++) pretextLayout(handles[i], 200+(i%400), 24);
+
+    // Benchmark: 10 passes of 500 layout() calls = 5000 total
+    const t0 = performance.now();
+    for (let run=0;run<10;run++)
+      for (let i=0;i<500;i++) pretextLayout(handles[i], 100+(i%500), 24);
+    results.rust = ((performance.now()-t0)/5000)*1000; // µs per call
+
+    for (const h of handles) pretextFree(h);
   }
-  const pretextTime = (performance.now() - t0) / 5000; // ms per call (5000 = 500 * 10)
-  const pretextUs = pretextTime * 1000;
 
-  // ── 2. canvas.measureText — measure each text segment ──
-  benchStatus.textContent = 'Benchmarking: canvas.measureText() (500 texts)...';
+  // ── 2. @chenglou/pretext (TypeScript original) — same two-phase ──
+  if (tsReady) {
+    benchStatus.textContent = 'Benchmarking: @chenglou/pretext TypeScript layout() ...';
+    await new Promise(r => setTimeout(r, 50));
+
+    // Prepare all 500 texts with the original TS engine
+    const tsPrepared = [];
+    for (const t of SAMPLE_TEXTS) tsPrepared.push(tsPrepare(t, '16px Inter'));
+
+    // Warm up
+    for (let i=0;i<500;i++) tsLayout(tsPrepared[i], 200+(i%400), 24);
+
+    // Benchmark: 10 passes of 500 layout() calls
+    const t1 = performance.now();
+    for (let run=0;run<10;run++)
+      for (let i=0;i<500;i++) tsLayout(tsPrepared[i], 100+(i%500), 24);
+    results.ts = ((performance.now()-t1)/5000)*1000;
+  }
+
+  // ── 3. canvas.measureText — per-word measurement ──
+  benchStatus.textContent = 'Benchmarking: canvas.measureText() ...';
   await new Promise(r => setTimeout(r, 50));
 
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   ctx.font = '16px Inter, sans-serif';
-
-  // Warm up
-  for (let i = 0; i < 50; i++) ctx.measureText(SAMPLE_TEXTS[i]);
-
-  const t1 = performance.now();
-  for (let i = 0; i < 500; i++) {
-    const words = SAMPLE_TEXTS[i].split(' ');
-    for (const word of words) ctx.measureText(word);
-  }
-  const canvasTime = (performance.now() - t1) / 500;
-  const canvasUs = canvasTime * 1000;
-
-  // ── 3. DOM batched — write all divs, then read all heights ──
-  benchStatus.textContent = 'Benchmarking: DOM batched read (500 divs)...';
-  await new Promise(r => setTimeout(r, 50));
-
-  // Create divs
-  benchContainer.innerHTML = '';
-  const divs = [];
-  for (let i = 0; i < 500; i++) {
-    const d = document.createElement('div');
-    d.style.cssText = 'width:300px;font:16px Inter,sans-serif;position:absolute;visibility:hidden';
-    benchContainer.appendChild(d);
-    divs.push(d);
-  }
-
-  // Warm up
-  for (let i = 0; i < 500; i++) divs[i].textContent = SAMPLE_TEXTS[i];
-  for (let i = 0; i < 500; i++) divs[i].offsetHeight;
+  for (let i=0;i<50;i++) ctx.measureText(SAMPLE_TEXTS[i]); // warm
 
   const t2 = performance.now();
-  // Write phase
-  for (let i = 0; i < 500; i++) divs[i].textContent = SAMPLE_TEXTS[i];
-  // Read phase (batched — single reflow)
-  const heights1 = [];
-  for (let i = 0; i < 500; i++) heights1.push(divs[i].offsetHeight);
-  const batchedTime = (performance.now() - t2) / 500;
-  const batchedUs = batchedTime * 1000;
+  for (let i=0;i<500;i++) {
+    const words = SAMPLE_TEXTS[i].split(' ');
+    for (const w of words) ctx.measureText(w);
+  }
+  results.canvas = ((performance.now()-t2)/500)*1000;
 
-  // ── 4. DOM interleaved — write + read per div (forces reflow each time) ──
-  benchStatus.textContent = 'Benchmarking: DOM interleaved read (500 divs, reflow per read)...';
+  // ── 4. DOM batched — write all, then read all ──
+  benchStatus.textContent = 'Benchmarking: DOM batched read ...';
   await new Promise(r => setTimeout(r, 50));
 
-  const t3 = performance.now();
-  for (let i = 0; i < 500; i++) {
-    divs[i].textContent = SAMPLE_TEXTS[i];
-    divs[i].offsetHeight; // Forces layout recalculation
+  benchContainer.innerHTML = '';
+  const divs = [];
+  for (let i=0;i<500;i++){
+    const d=document.createElement('div');
+    d.style.cssText='width:300px;font:16px Inter,sans-serif;position:absolute;visibility:hidden';
+    benchContainer.appendChild(d); divs.push(d);
   }
-  const interleavedTime = (performance.now() - t3) / 500;
-  const interleavedUs = interleavedTime * 1000;
+  // warm
+  for(let i=0;i<500;i++) divs[i].textContent=SAMPLE_TEXTS[i];
+  for(let i=0;i<500;i++) divs[i].offsetHeight;
 
-  // Clean up
+  const t3 = performance.now();
+  for(let i=0;i<500;i++) divs[i].textContent = SAMPLE_TEXTS[i];
+  for(let i=0;i<500;i++) divs[i].offsetHeight;
+  results.batched = ((performance.now()-t3)/500)*1000;
+
+  // ── 5. DOM interleaved — write+read per element ──
+  benchStatus.textContent = 'Benchmarking: DOM interleaved (reflow per read) ...';
+  await new Promise(r => setTimeout(r, 50));
+
+  const t4 = performance.now();
+  for(let i=0;i<500;i++){
+    divs[i].textContent = SAMPLE_TEXTS[i];
+    divs[i].offsetHeight;
+  }
+  results.interleaved = ((performance.now()-t4)/500)*1000;
   benchContainer.innerHTML = '';
 
-  // ── Display results ──
-  const maxUs = interleavedUs;
+  // ── Display ──
+  const maxUs = results.interleaved;
+  const show = (id, val, us) => {
+    if (us == null) { document.getElementById(id).style.display='none'; return; }
+    document.getElementById('bar-'+id).style.width = Math.max(0.5,(us/maxUs)*100)+'%';
+    document.getElementById('val-'+id).textContent = us<1 ? us.toFixed(3)+' µs' : us.toFixed(1)+' µs';
+  };
 
-  document.getElementById('bar-pretext').style.width = Math.max(0.5, (pretextUs / maxUs) * 100) + '%';
-  document.getElementById('val-pretext').textContent = pretextUs < 1 ? pretextUs.toFixed(3) + ' µs' : pretextUs.toFixed(1) + ' µs';
+  show('rust', 'bar-rust', results.rust);
+  show('ts', 'bar-ts', results.ts);
+  show('canvas', 'bar-canvas', results.canvas);
+  show('batched', 'bar-batched', results.batched);
+  show('interleaved', 'bar-interleaved', results.interleaved);
 
-  document.getElementById('bar-canvas').style.width = Math.max(0.5, (canvasUs / maxUs) * 100) + '%';
-  document.getElementById('val-canvas').textContent = canvasUs.toFixed(1) + ' µs';
+  // Hero
+  if (results.rust != null) {
+    document.getElementById('hero-perf').textContent = results.rust < 1 ? results.rust.toFixed(3) : results.rust.toFixed(1);
+    document.getElementById('hero-perf').classList.remove('loading');
+  }
 
-  document.getElementById('bar-batched').style.width = Math.max(0.5, (batchedUs / maxUs) * 100) + '%';
-  document.getElementById('val-batched').textContent = batchedUs.toFixed(1) + ' µs';
+  const speedup = results.rust != null
+    ? (results.interleaved / results.rust).toFixed(0)
+    : (results.ts != null ? (results.interleaved / results.ts).toFixed(0) : '?');
 
-  document.getElementById('bar-interleaved').style.width = Math.max(0.5, (interleavedUs / maxUs) * 100) + '%';
-  document.getElementById('val-interleaved').textContent = interleavedUs.toFixed(1) + ' µs';
+  const rsVsTs = (results.rust != null && results.ts != null)
+    ? ` Rust WASM is ${(results.ts/results.rust).toFixed(1)}× faster than the TypeScript original.`
+    : '';
 
-  // Update hero
-  document.getElementById('hero-perf').textContent = pretextUs < 1 ? pretextUs.toFixed(3) : pretextUs.toFixed(1);
-
-  const speedup = (interleavedUs / pretextUs).toFixed(0);
-  benchStatus.textContent = `Done. pretext layout() is ${speedup}× faster than interleaved DOM reads on this machine. ` +
-    `All numbers measured live — run again to verify.`;
+  benchStatus.textContent = `Done. ${speedup}× faster than interleaved DOM reads.${rsVsTs} All measured live — click again to verify.`;
 
   benchBtn.disabled = false;
   benchBtn.textContent = 'Run Again';
 });
 
-// Init
 updateReflow(400);
-window.addEventListener('resize', updateStream);
 </script>
 </body>
 </html>
