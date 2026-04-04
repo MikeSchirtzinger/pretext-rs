@@ -17,11 +17,9 @@
     --accent3: #7c5cfc;
     --green: #00e5a0;
     --orange: #ffb347;
-    --line-colors: #00d4ff, #ff6b9d, #7c5cfc, #00e5a0, #ffb347, #ff6b6b;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   html { font-size: 16px; }
 
   body {
@@ -29,20 +27,16 @@
     color: var(--fg);
     font-family: 'Inter', system-ui, sans-serif;
     min-height: 100vh;
-    overflow-x: hidden;
   }
 
   .container {
-    max-width: 720px;
+    max-width: 740px;
     margin: 0 auto;
     padding: 48px 24px 80px;
   }
 
-  /* ── Header ─────────────────────────────────────────── */
-  .hero {
-    text-align: center;
-    margin-bottom: 56px;
-  }
+  /* ── Hero ────────────────────────────────────────────── */
+  .hero { text-align: center; margin-bottom: 56px; }
 
   .hero h1 {
     font-family: 'JetBrains Mono', monospace;
@@ -66,10 +60,6 @@
     margin-top: 20px;
   }
 
-  .hero .stat {
-    text-align: center;
-  }
-
   .hero .stat-value {
     font-family: 'JetBrains Mono', monospace;
     font-size: 1.5rem;
@@ -86,9 +76,7 @@
   }
 
   /* ── Sections ───────────────────────────────────────── */
-  section {
-    margin-bottom: 48px;
-  }
+  section { margin-bottom: 48px; }
 
   section h2 {
     font-family: 'JetBrains Mono', monospace;
@@ -96,7 +84,6 @@
     font-weight: 700;
     color: var(--accent);
     margin-bottom: 4px;
-    letter-spacing: 0.3px;
   }
 
   section .subtitle {
@@ -118,8 +105,7 @@
 
   .layout-box .width-indicator {
     position: absolute;
-    top: 0;
-    right: 0;
+    top: 0; right: 0;
     background: var(--bg3);
     padding: 4px 10px;
     border-radius: 0 8px 0 8px;
@@ -128,27 +114,22 @@
     color: var(--dim);
   }
 
-  .layout-box .width-indicator span {
-    color: var(--accent);
-    font-weight: 700;
-  }
+  .layout-box .width-indicator span { color: var(--accent); font-weight: 700; }
 
   .layout-line {
     display: flex;
     align-items: center;
     height: 28px;
     position: relative;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
   }
 
   .layout-line .line-bg {
     position: absolute;
-    left: 0;
-    top: 2px;
-    bottom: 2px;
+    left: 0; top: 2px; bottom: 2px;
     border-radius: 3px;
     opacity: 0.08;
-    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.2s ease;
   }
 
   .layout-line .line-num {
@@ -159,17 +140,14 @@
     opacity: 0.4;
     margin-right: 8px;
     flex-shrink: 0;
-    position: relative;
-    z-index: 1;
+    position: relative; z-index: 1;
   }
 
   .layout-line .line-text {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.85rem;
     white-space: pre;
-    position: relative;
-    z-index: 1;
-    transition: opacity 0.15s;
+    position: relative; z-index: 1;
   }
 
   .layout-line .line-width {
@@ -179,42 +157,7 @@
     opacity: 0.35;
     flex-shrink: 0;
     padding-left: 8px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* ── Resize Handle ──────────────────────────────────── */
-  .resize-container {
-    position: relative;
-  }
-
-  .resize-handle {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: var(--accent);
-    cursor: col-resize;
-    border-radius: 2px;
-    opacity: 0.6;
-    transition: opacity 0.2s, box-shadow 0.2s;
-    z-index: 10;
-  }
-
-  .resize-handle:hover, .resize-handle.dragging {
-    opacity: 1;
-    box-shadow: 0 0 12px rgba(0,212,255,0.5);
-  }
-
-  .resize-handle::after {
-    content: '⋮';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 14px;
-    color: var(--accent);
-    pointer-events: none;
+    position: relative; z-index: 1;
   }
 
   /* ── Slider ─────────────────────────────────────────── */
@@ -234,8 +177,7 @@
 
   input[type="range"] {
     -webkit-appearance: none;
-    flex: 1;
-    height: 4px;
+    flex: 1; height: 4px;
     background: var(--dim);
     border-radius: 2px;
     outline: none;
@@ -243,8 +185,7 @@
 
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 16px; height: 16px;
     background: var(--accent);
     border-radius: 50%;
     cursor: pointer;
@@ -273,21 +214,20 @@
     color: var(--accent3);
     font-weight: 600;
     white-space: nowrap;
-    transition: all 0.25s;
   }
 
-  /* ── Perf Bars ──────────────────────────────────────── */
+  /* ── Perf ────────────────────────────────────────────── */
   .perf-row {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
-    height: 28px;
+    margin-bottom: 10px;
+    height: 32px;
   }
 
   .perf-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.75rem;
-    width: 100px;
+    width: 140px;
     text-align: right;
     padding-right: 12px;
     color: var(--fg);
@@ -295,30 +235,59 @@
 
   .perf-bar-bg {
     flex: 1;
-    height: 20px;
+    height: 22px;
     background: rgba(255,255,255,0.03);
     border-radius: 4px;
-    position: relative;
     overflow: hidden;
+    position: relative;
   }
 
   .perf-bar-fill {
     height: 100%;
     border-radius: 4px;
-    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: fit-content;
+    white-space: nowrap;
   }
 
-  .perf-bar-fill::after {
-    content: attr(data-value);
-    position: absolute;
-    right: -60px;
-    top: 50%;
-    transform: translateY(-50%);
+  .perf-bar-value {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;
     font-weight: 700;
+    margin-left: 8px;
     white-space: nowrap;
+    min-width: 80px;
+  }
+
+  .bench-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    background: var(--bg3);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 12px;
+  }
+
+  .bench-btn:hover { background: rgba(0,212,255,0.1); }
+  .bench-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .bench-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dim);
+    margin-top: 10px;
+    line-height: 1.5;
   }
 
   /* ── Textarea ───────────────────────────────────────── */
@@ -335,39 +304,10 @@
     min-height: 48px;
     outline: none;
     margin-bottom: 12px;
-    transition: border-color 0.2s;
   }
 
   textarea:focus { border-color: var(--accent); }
 
-  /* ── Counter animation ──────────────────────────────── */
-  .counter {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* ── Animate-in ─────────────────────────────────────── */
-  .fade-in {
-    opacity: 0;
-    transform: translateY(16px);
-    animation: fadeIn 0.6s forwards;
-  }
-
-  @keyframes fadeIn {
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .pulse {
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
-  }
-
-  /* ── Auto-resize animation ──────────────────────────── */
   .auto-resize-indicator {
     display: inline-flex;
     align-items: center;
@@ -380,19 +320,17 @@
     transition: opacity 0.3s;
   }
 
-  .auto-resize-indicator.active {
-    opacity: 1;
-  }
+  .auto-resize-indicator.active { opacity: 1; }
 
   .auto-resize-indicator .dot {
-    width: 6px;
-    height: 6px;
+    width: 6px; height: 6px;
     background: var(--accent2);
     border-radius: 50%;
     animation: pulse 0.8s infinite;
   }
 
-  /* ── Layout timer ───────────────────────────────────── */
+  @keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+
   .layout-timer {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.65rem;
@@ -402,13 +340,18 @@
     margin-left: 8px;
   }
 
-  .layout-timer.flash {
-    opacity: 1;
+  .layout-timer.flash { opacity: 1; }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeIn 0.6s forwards;
   }
+
+  @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
-
 <div class="container">
 
   <!-- Hero -->
@@ -417,12 +360,12 @@
     <div class="tagline">DOM-free text measurement and line-breaking engine</div>
     <div class="stats">
       <div class="stat">
-        <div class="stat-value" id="perf-counter">0.00</div>
+        <div class="stat-value" id="hero-perf">—</div>
         <div class="stat-label">µs / layout</div>
       </div>
       <div class="stat">
         <div class="stat-value">0</div>
-        <div class="stat-label">allocations</div>
+        <div class="stat-label">allocations in hot path</div>
       </div>
       <div class="stat">
         <div class="stat-value">2</div>
@@ -431,44 +374,34 @@
     </div>
   </div>
 
-  <!-- Section 1: Interactive Resize -->
-  <section class="fade-in" style="animation-delay: 0.15s">
+  <!-- Section 1: Live Reflow -->
+  <section class="fade-in" style="animation-delay:0.15s">
     <h2>Live Reflow
-      <span class="auto-resize-indicator" id="auto-indicator">
-        <span class="dot"></span> auto-resizing
-      </span>
+      <span class="auto-resize-indicator" id="auto-indicator"><span class="dot"></span> auto</span>
       <span class="layout-timer" id="layout-timer"></span>
     </h2>
-    <div class="subtitle">Drag the handle or let it animate — layout() runs in &lt;0.1µs per call</div>
-
+    <div class="subtitle">prepare() once, then layout() at any width — drag the slider or watch it animate</div>
     <div class="slider-row">
       <label>max_width</label>
       <input type="range" id="width-slider" min="80" max="600" value="400">
       <div class="slider-value" id="width-value">400px</div>
     </div>
-
-    <div class="resize-container">
-      <div class="layout-box" id="reflow-box">
-        <div class="width-indicator">width: <span id="reflow-width">400</span>px</div>
-        <div id="reflow-lines"></div>
-      </div>
-      <div class="resize-handle" id="resize-handle"></div>
+    <div class="layout-box" id="reflow-box">
+      <div class="width-indicator">width: <span id="reflow-width">400</span>px</div>
+      <div id="reflow-lines"></div>
     </div>
   </section>
 
   <!-- Section 2: Custom Text -->
-  <section class="fade-in" style="animation-delay: 0.3s">
+  <section class="fade-in" style="animation-delay:0.3s">
     <h2>Try Your Own Text</h2>
     <div class="subtitle">Type anything — CJK wraps per-character, punctuation sticks to words</div>
-
     <textarea id="custom-text" rows="2">The quick brown fox jumps over the lazy dog. 日本語のテキストも対応しています。</textarea>
-
     <div class="slider-row">
       <label>width</label>
       <input type="range" id="custom-width-slider" min="60" max="600" value="300">
       <div class="slider-value" id="custom-width-value">300px</div>
     </div>
-
     <div class="layout-box" id="custom-box">
       <div class="width-indicator">width: <span id="custom-width-display">300</span>px</div>
       <div id="custom-lines"></div>
@@ -476,16 +409,14 @@
   </section>
 
   <!-- Section 3: Inline Flow -->
-  <section class="fade-in" style="animation-delay: 0.45s">
+  <section class="fade-in" style="animation-delay:0.45s">
     <h2>Inline Flow</h2>
-    <div class="subtitle">Atomic chips never break — text wraps around them</div>
-
+    <div class="subtitle">Atomic chips never break mid-token — text wraps around them</div>
     <div class="slider-row">
       <label>width</label>
       <input type="range" id="inline-width-slider" min="120" max="600" value="360">
       <div class="slider-value" id="inline-width-value">360px</div>
     </div>
-
     <div class="layout-box" id="inline-box">
       <div class="width-indicator">width: <span id="inline-width-display">360</span>px</div>
       <div id="inline-lines"></div>
@@ -493,74 +424,81 @@
   </section>
 
   <!-- Section 4: Streaming API -->
-  <section class="fade-in" style="animation-delay: 0.6s">
+  <section class="fade-in" style="animation-delay:0.6s">
     <h2>Streaming API</h2>
-    <div class="subtitle">Per-line max_width — text flows around obstacles in real time</div>
-
-    <div class="layout-box" id="stream-box" style="min-height: 200px; position: relative">
+    <div class="subtitle">Variable max_width per line — drag the obstacle, text reflows around it</div>
+    <div class="layout-box" id="stream-box" style="min-height:220px;position:relative">
       <div id="stream-lines"></div>
       <div id="obstacle" style="
-        position: absolute;
-        border: 1px dashed var(--accent2);
-        border-radius: 8px;
-        background: rgba(255,107,157,0.06);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 0.65rem;
-        color: var(--accent2);
-        opacity: 0.7;
-        cursor: grab;
-        user-select: none;
+        position:absolute;
+        border:1px dashed var(--accent2);
+        border-radius:8px;
+        background:rgba(255,107,157,0.06);
+        display:flex; align-items:center; justify-content:center;
+        font-family:'JetBrains Mono',monospace; font-size:0.65rem;
+        color:var(--accent2); opacity:0.7;
+        cursor:grab; user-select:none;
       ">drag me</div>
     </div>
   </section>
 
-  <!-- Section 5: Performance -->
-  <section class="fade-in" style="animation-delay: 0.75s">
-    <h2>Performance</h2>
-    <div class="subtitle">prepare() once → layout() is pure arithmetic, no DOM, no canvas</div>
+  <!-- Section 5: Live Benchmark -->
+  <section class="fade-in" style="animation-delay:0.75s">
+    <h2>Live Benchmark</h2>
+    <div class="subtitle">Measured right now, in this browser, on your machine — not borrowed numbers</div>
 
-    <div style="margin-top: 16px">
+    <div style="margin-top:16px">
       <div class="perf-row">
-        <div class="perf-label">layout()</div>
-        <div class="perf-bar-bg">
-          <div class="perf-bar-fill" id="bar-layout" style="width: 0%; background: var(--accent)" data-value=""></div>
-        </div>
+        <div class="perf-label" style="color:var(--accent)">pretext layout()</div>
+        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-pretext" style="width:0;background:var(--accent)"></div></div>
+        <div class="perf-bar-value" id="val-pretext" style="color:var(--accent)">—</div>
       </div>
       <div class="perf-row">
-        <div class="perf-label">DOM batched</div>
-        <div class="perf-bar-bg">
-          <div class="perf-bar-fill" id="bar-batched" style="width: 0%; background: var(--orange)" data-value=""></div>
-        </div>
+        <div class="perf-label" style="color:var(--orange)">canvas.measureText</div>
+        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-canvas" style="width:0;background:var(--orange)"></div></div>
+        <div class="perf-bar-value" id="val-canvas" style="color:var(--orange)">—</div>
       </div>
       <div class="perf-row">
-        <div class="perf-label">DOM reflow</div>
-        <div class="perf-bar-bg">
-          <div class="perf-bar-fill" id="bar-reflow" style="width: 0%; background: var(--accent2)" data-value=""></div>
-        </div>
+        <div class="perf-label" style="color:var(--green)">DOM read (batched)</div>
+        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-batched" style="width:0;background:var(--green)"></div></div>
+        <div class="perf-bar-value" id="val-batched" style="color:var(--green)">—</div>
+      </div>
+      <div class="perf-row">
+        <div class="perf-label" style="color:var(--accent2)">DOM read (interleaved)</div>
+        <div class="perf-bar-bg"><div class="perf-bar-fill" id="bar-interleaved" style="width:0;background:var(--accent2)"></div></div>
+        <div class="perf-bar-value" id="val-interleaved" style="color:var(--accent2)">—</div>
       </div>
     </div>
-    <div style="font-size: 0.65rem; color: var(--dim); margin-top: 8px; font-family: 'JetBrains Mono', monospace">
-      * DOM numbers from @chenglou/pretext benchmarks (500 items, Chrome)
+
+    <button class="bench-btn" id="run-bench">Run Benchmark (500 texts × 3 methods)</button>
+
+    <div class="bench-note" id="bench-status"></div>
+    <div class="bench-note" style="margin-top:6px">
+      Each method measures 500 text blocks at varying widths.<br>
+      pretext = pure arithmetic over cached widths (no DOM/canvas).<br>
+      canvas = CanvasRenderingContext2d.measureText() per segment.<br>
+      DOM batched = write all divs, then read all heights.<br>
+      DOM interleaved = write one div + read height, repeat (triggers reflow per read).
     </div>
   </section>
 
 </div>
 
+<!-- Hidden benchmark container -->
+<div id="bench-container" style="position:absolute;left:-9999px;top:0;width:300px;font:16px Inter,sans-serif"></div>
+
 <script>
 // ═══════════════════════════════════════════════════════════════════
-// Minimal line-breaking engine (mirrors pretext-rs algorithm in JS)
+// Line-breaking engine (mirrors pretext-rs core algorithm)
 // ═══════════════════════════════════════════════════════════════════
 
 const LINE_COLORS = ['#00d4ff','#ff6b9d','#7c5cfc','#00e5a0','#ffb347','#ff6b6b'];
 
 function isCJK(c) {
   const cp = c.codePointAt(0);
-  return (cp >= 0x4E00 && cp <= 0x9FFF) || (cp >= 0x3400 && cp <= 0x4DBF) ||
-         (cp >= 0x3040 && cp <= 0x309F) || (cp >= 0x30A0 && cp <= 0x30FF) ||
-         (cp >= 0xFF01 && cp <= 0xFF60) || (cp >= 0x3000 && cp <= 0x303F);
+  return (cp>=0x4E00&&cp<=0x9FFF)||(cp>=0x3400&&cp<=0x4DBF)||
+         (cp>=0x3040&&cp<=0x309F)||(cp>=0x30A0&&cp<=0x30FF)||
+         (cp>=0xFF01&&cp<=0xFF60)||(cp>=0x3000&&cp<=0x303F);
 }
 
 function measureText(text, charW, cjkW) {
@@ -569,98 +507,56 @@ function measureText(text, charW, cjkW) {
   return w;
 }
 
-function layoutText(text, maxWidth, charW = 7.5, cjkW = 14) {
-  if (!text) return [{ text: '', width: 0 }];
-
-  // Segment: split into words and CJK chars
+// Simulates pretext's two-phase: prepare() builds segment widths,
+// layout() does pure arithmetic over them (the fast path)
+function prepare(text, charW = 7.5, cjkW = 14) {
   const segments = [];
   let buf = '';
   for (const c of text) {
     if (isCJK(c)) {
-      if (buf) { segments.push(buf); buf = ''; }
-      segments.push(c);
+      if (buf) { segments.push({ text: buf, width: measureText(buf, charW, cjkW), isSpace: false }); buf = ''; }
+      segments.push({ text: c, width: cjkW, isSpace: false });
     } else if (c === ' ') {
-      if (buf) { segments.push(buf); buf = ''; }
-      segments.push(' ');
+      if (buf) { segments.push({ text: buf, width: measureText(buf, charW, cjkW), isSpace: false }); buf = ''; }
+      segments.push({ text: ' ', width: charW, isSpace: true });
     } else {
       buf += c;
     }
   }
-  if (buf) segments.push(buf);
+  if (buf) segments.push({ text: buf, width: measureText(buf, charW, cjkW), isSpace: false });
+  return segments;
+}
 
-  // Line break
+// The hot path — pure arithmetic, no measurement, no DOM
+function layout(segments, maxWidth) {
+  if (!segments.length) return [{ text: '', width: 0 }];
   const lines = [];
-  let lineText = '';
-  let lineW = 0;
-
+  let lineText = '', lineW = 0;
   for (const seg of segments) {
-    const segW = measureText(seg, charW, cjkW);
-
-    if (seg === ' ') {
-      lineText += ' ';
-      lineW += charW;
-      continue;
-    }
-
-    if (lineW + segW > maxWidth && lineText.trim()) {
+    if (seg.isSpace) { lineText += ' '; lineW += seg.width; continue; }
+    if (lineW + seg.width > maxWidth && lineText.trim()) {
       lines.push({ text: lineText.trimEnd(), width: lineW });
-      lineText = seg;
-      lineW = segW;
+      lineText = seg.text; lineW = seg.width;
     } else {
-      lineText += seg;
-      lineW += segW;
+      lineText += seg.text; lineW += seg.width;
     }
   }
-
-  if (lineText.trim()) {
-    lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), charW, cjkW) });
-  }
-
+  if (lineText.trim()) lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), 7.5, 14) });
   return lines.length ? lines : [{ text: '', width: 0 }];
 }
 
-// Variable-width layout (streaming API simulation)
-function layoutStreaming(text, widthPerLine, charW = 7.5) {
-  const segments = [];
-  let buf = '';
-  for (const c of text) {
-    if (c === ' ') {
-      if (buf) { segments.push(buf); buf = ''; }
-      segments.push(' ');
-    } else { buf += c; }
-  }
-  if (buf) segments.push(buf);
-
+function layoutStreaming(text, widthFn, charW = 7.5) {
+  const segs = prepare(text, charW, 14);
   const lines = [];
-  let lineText = '';
-  let lineW = 0;
-  let lineIdx = 0;
-
-  for (const seg of segments) {
-    const segW = measureText(seg, charW, 14);
-    const maxW = widthPerLine(lineIdx);
-
-    if (seg === ' ') {
-      lineText += ' ';
-      lineW += charW;
-      continue;
-    }
-
-    if (lineW + segW > maxW && lineText.trim()) {
-      lines.push({ text: lineText.trimEnd(), width: lineW, maxWidth: maxW });
-      lineIdx++;
-      lineText = seg;
-      lineW = segW;
-    } else {
-      lineText += seg;
-      lineW += segW;
-    }
+  let lineText = '', lineW = 0, li = 0;
+  for (const seg of segs) {
+    if (seg.isSpace) { lineText += ' '; lineW += seg.width; continue; }
+    if (lineW + seg.width > widthFn(li) && lineText.trim()) {
+      lines.push({ text: lineText.trimEnd(), width: lineW, maxWidth: widthFn(li) });
+      li++; lineText = seg.text; lineW = seg.width;
+    } else { lineText += seg.text; lineW += seg.width; }
   }
-
-  if (lineText.trim()) {
-    lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), charW, 14), maxWidth: widthPerLine(lineIdx) });
-  }
-
+  if (lineText.trim()) lines.push({ text: lineText.trimEnd(), width: measureText(lineText.trimEnd(), charW, 14), maxWidth: widthFn(li) });
   return lines;
 }
 
@@ -669,43 +565,22 @@ function layoutStreaming(text, widthPerLine, charW = 7.5) {
 // ═══════════════════════════════════════════════════════════════════
 
 function renderLines(container, lines, maxWidth) {
-  const existing = container.children;
-  const lineCount = lines.length;
-
-  // Reuse DOM nodes where possible
-  while (container.children.length > lineCount) {
-    container.removeChild(container.lastChild);
-  }
-
-  for (let i = 0; i < lineCount; i++) {
-    const line = lines[i];
-    const color = LINE_COLORS[i % LINE_COLORS.length];
-    let el = existing[i];
-
+  while (container.children.length > lines.length) container.removeChild(container.lastChild);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i], color = LINE_COLORS[i % LINE_COLORS.length];
+    let el = container.children[i];
     if (!el) {
       el = document.createElement('div');
       el.className = 'layout-line';
-      el.innerHTML = `
-        <div class="line-bg"></div>
-        <div class="line-num"></div>
-        <div class="line-text"></div>
-        <div class="line-width"></div>
-      `;
+      el.innerHTML = '<div class="line-bg"></div><div class="line-num"></div><div class="line-text"></div><div class="line-width"></div>';
       container.appendChild(el);
     }
-
-    const bg = el.querySelector('.line-bg');
-    const num = el.querySelector('.line-num');
-    const text = el.querySelector('.line-text');
-    const width = el.querySelector('.line-width');
-
-    bg.style.background = color;
-    bg.style.width = Math.min(line.width, maxWidth) + 'px';
-    num.textContent = i + 1;
-    num.style.color = color;
-    text.textContent = line.text;
-    width.textContent = Math.round(line.width) + 'px';
-    width.style.color = color;
+    el.querySelector('.line-bg').style.cssText = `background:${color};width:${Math.min(line.width, maxWidth)}px`;
+    el.querySelector('.line-num').textContent = i + 1;
+    el.querySelector('.line-num').style.color = color;
+    el.querySelector('.line-text').textContent = line.text;
+    el.querySelector('.line-width').textContent = Math.round(line.width) + 'px';
+    el.querySelector('.line-width').style.color = color;
   }
 }
 
@@ -714,127 +589,75 @@ function renderLines(container, lines, maxWidth) {
 // ═══════════════════════════════════════════════════════════════════
 
 const DEMO_TEXT = "The quick brown fox jumps over the lazy dog. This sentence demonstrates real-time text reflow as you resize the container width.";
+const preparedDemo = prepare(DEMO_TEXT);
 
 const widthSlider = document.getElementById('width-slider');
 const widthValue = document.getElementById('width-value');
 const reflowBox = document.getElementById('reflow-box');
 const reflowLines = document.getElementById('reflow-lines');
 const reflowWidth = document.getElementById('reflow-width');
-const resizeHandle = document.getElementById('resize-handle');
 const layoutTimer = document.getElementById('layout-timer');
-
-let layoutCount = 0;
 
 function updateReflow(maxW) {
   const t0 = performance.now();
-  const lines = layoutText(DEMO_TEXT, maxW);
+  // This is the hot path — layout() on pre-computed segment widths
+  const lines = layout(preparedDemo, maxW);
   const t1 = performance.now();
-  layoutCount++;
 
   renderLines(reflowLines, lines, maxW);
   reflowWidth.textContent = Math.round(maxW);
   widthValue.textContent = Math.round(maxW) + 'px';
   widthSlider.value = maxW;
-  reflowBox.style.maxWidth = maxW + 50 + 'px';
+  reflowBox.style.maxWidth = Math.max(maxW + 50, 200) + 'px';
 
-  // Position handle
-  resizeHandle.style.left = (reflowBox.offsetLeft + Math.min(maxW + 32, reflowBox.offsetWidth)) + 'px';
-
-  // Flash timer
   const us = ((t1 - t0) * 1000).toFixed(1);
-  layoutTimer.textContent = `${us}µs`;
+  layoutTimer.textContent = `layout: ${us}µs`;
   layoutTimer.classList.add('flash');
   clearTimeout(layoutTimer._t);
   layoutTimer._t = setTimeout(() => layoutTimer.classList.remove('flash'), 800);
 }
 
-widthSlider.addEventListener('input', () => {
-  stopAutoResize();
-  updateReflow(+widthSlider.value);
-});
+widthSlider.addEventListener('input', () => { stopAutoResize(); updateReflow(+widthSlider.value); });
 
-// Drag handle
-let dragging = false;
-resizeHandle.addEventListener('mousedown', (e) => {
-  dragging = true;
-  resizeHandle.classList.add('dragging');
-  stopAutoResize();
-  e.preventDefault();
-});
-document.addEventListener('mousemove', (e) => {
-  if (!dragging) return;
-  const rect = reflowBox.getBoundingClientRect();
-  const w = Math.max(80, Math.min(600, e.clientX - rect.left - 16));
-  updateReflow(w);
-});
-document.addEventListener('mouseup', () => {
-  dragging = false;
-  resizeHandle.classList.remove('dragging');
-});
-
-// Auto-resize animation
-let autoResizeRAF;
-let autoResizeActive = true;
-const autoIndicator = document.getElementById('auto-indicator');
+// Auto-resize
+let autoRAF, autoActive = true;
+const autoInd = document.getElementById('auto-indicator');
 
 function autoResize(t) {
-  if (!autoResizeActive) return;
-  // Smooth sine wave between 120 and 520
-  const w = 320 + Math.sin(t / 1400) * 200;
-  updateReflow(w);
-  autoResizeRAF = requestAnimationFrame(autoResize);
+  if (!autoActive) return;
+  updateReflow(320 + Math.sin(t / 1400) * 200);
+  autoRAF = requestAnimationFrame(autoResize);
 }
+function stopAutoResize() { autoActive = false; cancelAnimationFrame(autoRAF); autoInd.classList.remove('active'); }
+function startAutoResize() { autoActive = true; autoInd.classList.add('active'); autoRAF = requestAnimationFrame(autoResize); }
 
-function stopAutoResize() {
-  autoResizeActive = false;
-  cancelAnimationFrame(autoResizeRAF);
-  autoIndicator.classList.remove('active');
-}
-
-function startAutoResize() {
-  autoResizeActive = true;
-  autoIndicator.classList.add('active');
-  autoResizeRAF = requestAnimationFrame(autoResize);
-}
-
-// Start auto after 1s
-setTimeout(() => {
-  startAutoResize();
-  // Stop after 8s to not be annoying
-  setTimeout(stopAutoResize, 8000);
-}, 1000);
+setTimeout(() => { startAutoResize(); setTimeout(stopAutoResize, 8000); }, 1000);
 
 // ═══════════════════════════════════════════════════════════════════
 // Section 2: Custom Text
 // ═══════════════════════════════════════════════════════════════════
 
 const customText = document.getElementById('custom-text');
-const customWidthSlider = document.getElementById('custom-width-slider');
-const customWidthValue = document.getElementById('custom-width-value');
+const customSlider = document.getElementById('custom-width-slider');
+const customValue = document.getElementById('custom-width-value');
 const customLines = document.getElementById('custom-lines');
-const customWidthDisplay = document.getElementById('custom-width-display');
+const customDisplay = document.getElementById('custom-width-display');
 
 function updateCustom() {
-  const w = +customWidthSlider.value;
-  const lines = layoutText(customText.value, w);
-  renderLines(customLines, lines, w);
-  customWidthValue.textContent = w + 'px';
-  customWidthDisplay.textContent = w;
-  document.getElementById('custom-box').style.maxWidth = w + 50 + 'px';
+  const w = +customSlider.value;
+  const segs = prepare(customText.value);
+  renderLines(customLines, layout(segs, w), w);
+  customValue.textContent = w + 'px';
+  customDisplay.textContent = w;
+  document.getElementById('custom-box').style.maxWidth = Math.max(w + 50, 200) + 'px';
 }
-
 customText.addEventListener('input', updateCustom);
-customWidthSlider.addEventListener('input', updateCustom);
+customSlider.addEventListener('input', updateCustom);
 updateCustom();
 
 // ═══════════════════════════════════════════════════════════════════
 // Section 3: Inline Flow
 // ═══════════════════════════════════════════════════════════════════
-
-const inlineWidthSlider = document.getElementById('inline-width-slider');
-const inlineWidthValue = document.getElementById('inline-width-value');
-const inlineLines = document.getElementById('inline-lines');
-const inlineWidthDisplay = document.getElementById('inline-width-display');
 
 const INLINE_ITEMS = [
   { text: 'Deploy to', atomic: false },
@@ -846,245 +669,242 @@ const INLINE_ITEMS = [
   { text: 'passed all checks.', atomic: false },
 ];
 
-function layoutInlineFlow(items, maxWidth, charW = 7.5) {
-  const lines = [];
-  let currentLine = [];
-  let lineW = 0;
-
+function layoutInline(items, maxWidth, charW = 7.5) {
+  const lines = []; let cur = [], lineW = 0;
   for (const item of items) {
-    const itemW = item.atomic
-      ? measureText(item.text, charW, 14) + 20  // chip padding
-      : measureText(item.text, charW, 14);
-    const gap = currentLine.length > 0 ? charW : 0;
-
+    const iw = measureText(item.text, charW, 14) + (item.atomic ? 20 : 0);
+    const gap = cur.length ? charW : 0;
     if (item.atomic) {
-      // Never break atomic items
-      if (lineW + gap + itemW > maxWidth && currentLine.length > 0) {
-        lines.push([...currentLine]);
-        currentLine = [item];
-        lineW = itemW;
-      } else {
-        currentLine.push(item);
-        lineW += gap + itemW;
-      }
+      if (lineW + gap + iw > maxWidth && cur.length) { lines.push([...cur]); cur = [item]; lineW = iw; }
+      else { cur.push(item); lineW += gap + iw; }
     } else {
-      // Try to fit, or break at words
-      const words = item.text.split(' ').filter(Boolean);
-      for (const word of words) {
-        const wordW = measureText(word, charW, 14);
-        const g = currentLine.length > 0 ? charW : 0;
-
-        if (lineW + g + wordW > maxWidth && currentLine.length > 0) {
-          lines.push([...currentLine]);
-          currentLine = [{ text: word, atomic: false }];
-          lineW = wordW;
+      for (const word of item.text.split(' ').filter(Boolean)) {
+        const ww = measureText(word, charW, 14), g = cur.length ? charW : 0;
+        if (lineW + g + ww > maxWidth && cur.length) {
+          lines.push([...cur]); cur = [{ text: word, atomic: false }]; lineW = ww;
         } else {
-          // Merge with previous non-atomic item or create new
-          const last = currentLine[currentLine.length - 1];
-          if (last && !last.atomic) {
-            last.text += ' ' + word;
-          } else {
-            currentLine.push({ text: word, atomic: false });
-          }
-          lineW += g + wordW;
+          const last = cur[cur.length - 1];
+          if (last && !last.atomic) last.text += ' ' + word; else cur.push({ text: word, atomic: false });
+          lineW += g + ww;
         }
       }
     }
   }
-
-  if (currentLine.length > 0) lines.push(currentLine);
+  if (cur.length) lines.push(cur);
   return lines;
 }
 
-function renderInlineFlow(container, lines, maxWidth) {
+function renderInline(container, lines) {
   container.innerHTML = '';
-
   for (let i = 0; i < lines.length; i++) {
-    const lineEl = document.createElement('div');
-    lineEl.className = 'layout-line';
-    lineEl.style.flexWrap = 'wrap';
-    lineEl.style.gap = '4px';
-    lineEl.style.height = 'auto';
-    lineEl.style.minHeight = '28px';
-    lineEl.style.padding = '2px 0';
-
+    const el = document.createElement('div');
+    el.className = 'layout-line';
+    el.style.cssText = 'flex-wrap:wrap;gap:4px;height:auto;min-height:28px;padding:2px 0';
     const color = LINE_COLORS[i % LINE_COLORS.length];
-
-    const numEl = document.createElement('div');
-    numEl.className = 'line-num';
-    numEl.textContent = i + 1;
-    numEl.style.color = color;
-    lineEl.appendChild(numEl);
-
+    const num = document.createElement('div');
+    num.className = 'line-num'; num.textContent = i + 1; num.style.color = color;
+    el.appendChild(num);
     for (const item of lines[i]) {
       if (item.atomic) {
-        const chip = document.createElement('span');
-        chip.className = 'chip';
-        chip.textContent = item.text;
-        lineEl.appendChild(chip);
+        const c = document.createElement('span'); c.className = 'chip'; c.textContent = item.text; el.appendChild(c);
       } else {
-        const span = document.createElement('span');
-        span.className = 'line-text';
-        span.textContent = item.text;
-        lineEl.appendChild(span);
+        const s = document.createElement('span'); s.className = 'line-text'; s.textContent = item.text; el.appendChild(s);
       }
     }
-
-    container.appendChild(lineEl);
+    container.appendChild(el);
   }
 }
 
-function updateInline() {
-  const w = +inlineWidthSlider.value;
-  const lines = layoutInlineFlow(INLINE_ITEMS, w);
-  renderInlineFlow(inlineLines, lines, w);
-  inlineWidthValue.textContent = w + 'px';
-  inlineWidthDisplay.textContent = w;
-  document.getElementById('inline-box').style.maxWidth = w + 50 + 'px';
-}
+const inlineSlider = document.getElementById('inline-width-slider');
+const inlineValue = document.getElementById('inline-width-value');
+const inlineDisplay = document.getElementById('inline-width-display');
+const inlineLines = document.getElementById('inline-lines');
 
-inlineWidthSlider.addEventListener('input', updateInline);
+function updateInline() {
+  const w = +inlineSlider.value;
+  renderInline(inlineLines, layoutInline(INLINE_ITEMS, w));
+  inlineValue.textContent = w + 'px';
+  inlineDisplay.textContent = w;
+  document.getElementById('inline-box').style.maxWidth = Math.max(w + 50, 200) + 'px';
+}
+inlineSlider.addEventListener('input', updateInline);
 updateInline();
 
 // ═══════════════════════════════════════════════════════════════════
-// Section 4: Streaming (text around obstacle)
+// Section 4: Streaming API (obstacle)
 // ═══════════════════════════════════════════════════════════════════
 
 const STREAM_TEXT = "The quick brown fox jumps over the lazy dog and keeps on running through the fields of golden wheat under the bright summer sun while birds sing overhead";
-
 const streamBox = document.getElementById('stream-box');
-const streamLines = document.getElementById('stream-lines');
+const streamLinesEl = document.getElementById('stream-lines');
 const obstacle = document.getElementById('obstacle');
 
-let obstacleX = 300, obstacleY = 56, obstacleW = 140, obstacleH = 56;
+let obsX = 280, obsY = 56, obsW = 140, obsH = 56;
 
-function updateObstacleStyle() {
-  obstacle.style.left = obstacleX + 'px';
-  obstacle.style.top = obstacleY + 'px';
-  obstacle.style.width = obstacleW + 'px';
-  obstacle.style.height = obstacleH + 'px';
+function updateObs() {
+  obstacle.style.cssText += `;left:${obsX}px;top:${obsY}px;width:${obsW}px;height:${obsH}px`;
 }
 
-function updateStreaming() {
+function updateStream() {
   const boxW = streamBox.clientWidth - 32;
-  const lineH = 28;
-
-  const widthFn = (lineIdx) => {
-    const lineTop = lineIdx * lineH;
-    const lineBot = lineTop + lineH;
-    // Does this line overlap the obstacle?
-    if (lineBot > obstacleY && lineTop < obstacleY + obstacleH) {
-      return Math.max(40, obstacleX - 16);
-    }
-    return boxW;
-  };
-
-  const lines = layoutStreaming(STREAM_TEXT, widthFn);
-  renderLines(streamLines, lines, boxW);
+  const lh = 28;
+  const lines = layoutStreaming(STREAM_TEXT, (li) => {
+    const top = li * lh, bot = top + lh;
+    return (bot > obsY && top < obsY + obsH) ? Math.max(40, obsX - 16) : boxW;
+  });
+  renderLines(streamLinesEl, lines, boxW);
 }
 
-updateObstacleStyle();
-updateStreaming();
+updateObs(); updateStream();
 
-// Drag obstacle
-let dragObs = false, dragOffX, dragOffY;
-obstacle.addEventListener('mousedown', (e) => {
-  dragObs = true;
-  const r = obstacle.getBoundingClientRect();
-  dragOffX = e.clientX - r.left;
-  dragOffY = e.clientY - r.top;
-  obstacle.style.cursor = 'grabbing';
-  e.preventDefault();
-});
+let dragObs = false, dox, doy;
+obstacle.addEventListener('mousedown', (e) => { dragObs = true; obsFloat = false; dox = e.clientX - obsX; doy = e.clientY - obsY; obstacle.style.cursor = 'grabbing'; e.preventDefault(); });
 document.addEventListener('mousemove', (e) => {
   if (!dragObs) return;
-  const boxR = streamBox.getBoundingClientRect();
-  obstacleX = Math.max(60, Math.min(boxR.width - obstacleW - 16, e.clientX - boxR.left - dragOffX));
-  obstacleY = Math.max(0, Math.min(200, e.clientY - boxR.top - dragOffY));
-  updateObstacleStyle();
-  updateStreaming();
+  const r = streamBox.getBoundingClientRect();
+  obsX = Math.max(60, Math.min(r.width - obsW - 16, e.clientX - r.left - dox));
+  obsY = Math.max(0, Math.min(200, e.clientY - r.top - doy));
+  updateObs(); updateStream();
 });
-document.addEventListener('mouseup', () => {
-  dragObs = false;
-  obstacle.style.cursor = 'grab';
-});
+document.addEventListener('mouseup', () => { dragObs = false; obstacle.style.cursor = 'grab'; });
 
-// Gentle obstacle float animation
-let obsAnimActive = true;
-function animateObstacle(t) {
-  if (!obsAnimActive || dragObs) { requestAnimationFrame(animateObstacle); return; }
-  obstacleX = 250 + Math.sin(t / 2000) * 100;
-  obstacleY = 40 + Math.sin(t / 1500) * 30;
-  updateObstacleStyle();
-  updateStreaming();
-  requestAnimationFrame(animateObstacle);
+let obsFloat = true;
+function floatObs(t) {
+  if (obsFloat && !dragObs) { obsX = 240 + Math.sin(t/2000)*100; obsY = 40 + Math.sin(t/1500)*30; updateObs(); updateStream(); }
+  requestAnimationFrame(floatObs);
 }
-requestAnimationFrame(animateObstacle);
-
-// Stop float on interaction
-obstacle.addEventListener('mousedown', () => { obsAnimActive = false; });
+requestAnimationFrame(floatObs);
 
 // ═══════════════════════════════════════════════════════════════════
-// Section 5: Performance bars (animate in)
+// Section 5: REAL Benchmark — runs in THIS browser, on YOUR machine
 // ═══════════════════════════════════════════════════════════════════
 
-const perfObserver = new IntersectionObserver((entries) => {
-  for (const entry of entries) {
-    if (entry.isIntersecting) {
-      setTimeout(() => {
-        const barLayout = document.getElementById('bar-layout');
-        const barBatched = document.getElementById('bar-batched');
-        const barReflow = document.getElementById('bar-reflow');
+const benchBtn = document.getElementById('run-bench');
+const benchStatus = document.getElementById('bench-status');
+const benchContainer = document.getElementById('bench-container');
 
-        barLayout.style.width = '0.5%';
-        barLayout.setAttribute('data-value', '~0.09 µs');
-        barLayout.style.color = 'var(--accent)';
+// Generate 500 varied text samples
+const SAMPLE_TEXTS = [];
+const WORDS = "the quick brown fox jumps over a lazy dog and runs through the field while the sun shines bright above the mountains in the distance where clouds gather slowly".split(' ');
+for (let i = 0; i < 500; i++) {
+  let s = '';
+  const len = 8 + Math.floor(Math.random() * 20);
+  for (let j = 0; j < len; j++) s += WORDS[Math.floor(Math.random() * WORDS.length)] + ' ';
+  SAMPLE_TEXTS.push(s.trim());
+}
 
-        barBatched.style.width = '9%';
-        barBatched.setAttribute('data-value', '3.7 µs');
-        barBatched.style.color = 'var(--orange)';
+benchBtn.addEventListener('click', async () => {
+  benchBtn.disabled = true;
+  benchStatus.textContent = 'Warming up...';
+  await new Promise(r => setTimeout(r, 100));
 
-        barReflow.style.width = '100%';
-        barReflow.setAttribute('data-value', '41.7 µs');
-        barReflow.style.color = 'var(--accent2)';
-      }, 300);
+  // ── 1. pretext layout() — pure arithmetic over pre-computed widths ──
+  benchStatus.textContent = 'Benchmarking: pretext layout() (500 texts × 10 widths)...';
+  await new Promise(r => setTimeout(r, 50));
 
-      perfObserver.disconnect();
+  const prepared = SAMPLE_TEXTS.map(t => prepare(t));
+  // Warm up
+  for (let i = 0; i < 500; i++) layout(prepared[i], 200 + (i % 400));
+
+  const t0 = performance.now();
+  for (let run = 0; run < 10; run++) {
+    for (let i = 0; i < 500; i++) {
+      layout(prepared[i], 100 + (i % 500));
     }
   }
-}, { threshold: 0.3 });
-perfObserver.observe(document.getElementById('bar-reflow').parentElement);
+  const pretextTime = (performance.now() - t0) / 5000; // ms per call (5000 = 500 * 10)
+  const pretextUs = pretextTime * 1000;
 
-// ═══════════════════════════════════════════════════════════════════
-// Hero counter animation
-// ═══════════════════════════════════════════════════════════════════
+  // ── 2. canvas.measureText — measure each text segment ──
+  benchStatus.textContent = 'Benchmarking: canvas.measureText() (500 texts)...';
+  await new Promise(r => setTimeout(r, 50));
 
-const perfCounter = document.getElementById('perf-counter');
-let counterTarget = 0.09;
-let counterCurrent = 5.0;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.font = '16px Inter, sans-serif';
 
-function animateCounter() {
-  counterCurrent += (counterTarget - counterCurrent) * 0.03;
-  if (Math.abs(counterCurrent - counterTarget) < 0.005) {
-    counterCurrent = counterTarget;
-  } else {
-    requestAnimationFrame(animateCounter);
+  // Warm up
+  for (let i = 0; i < 50; i++) ctx.measureText(SAMPLE_TEXTS[i]);
+
+  const t1 = performance.now();
+  for (let i = 0; i < 500; i++) {
+    const words = SAMPLE_TEXTS[i].split(' ');
+    for (const word of words) ctx.measureText(word);
   }
-  perfCounter.textContent = counterCurrent.toFixed(2);
-}
-setTimeout(animateCounter, 500);
+  const canvasTime = (performance.now() - t1) / 500;
+  const canvasUs = canvasTime * 1000;
 
-// ═══════════════════════════════════════════════════════════════════
-// Window resize
-// ═══════════════════════════════════════════════════════════════════
+  // ── 3. DOM batched — write all divs, then read all heights ──
+  benchStatus.textContent = 'Benchmarking: DOM batched read (500 divs)...';
+  await new Promise(r => setTimeout(r, 50));
 
-window.addEventListener('resize', () => {
-  updateStreaming();
+  // Create divs
+  benchContainer.innerHTML = '';
+  const divs = [];
+  for (let i = 0; i < 500; i++) {
+    const d = document.createElement('div');
+    d.style.cssText = 'width:300px;font:16px Inter,sans-serif;position:absolute;visibility:hidden';
+    benchContainer.appendChild(d);
+    divs.push(d);
+  }
+
+  // Warm up
+  for (let i = 0; i < 500; i++) divs[i].textContent = SAMPLE_TEXTS[i];
+  for (let i = 0; i < 500; i++) divs[i].offsetHeight;
+
+  const t2 = performance.now();
+  // Write phase
+  for (let i = 0; i < 500; i++) divs[i].textContent = SAMPLE_TEXTS[i];
+  // Read phase (batched — single reflow)
+  const heights1 = [];
+  for (let i = 0; i < 500; i++) heights1.push(divs[i].offsetHeight);
+  const batchedTime = (performance.now() - t2) / 500;
+  const batchedUs = batchedTime * 1000;
+
+  // ── 4. DOM interleaved — write + read per div (forces reflow each time) ──
+  benchStatus.textContent = 'Benchmarking: DOM interleaved read (500 divs, reflow per read)...';
+  await new Promise(r => setTimeout(r, 50));
+
+  const t3 = performance.now();
+  for (let i = 0; i < 500; i++) {
+    divs[i].textContent = SAMPLE_TEXTS[i];
+    divs[i].offsetHeight; // Forces layout recalculation
+  }
+  const interleavedTime = (performance.now() - t3) / 500;
+  const interleavedUs = interleavedTime * 1000;
+
+  // Clean up
+  benchContainer.innerHTML = '';
+
+  // ── Display results ──
+  const maxUs = interleavedUs;
+
+  document.getElementById('bar-pretext').style.width = Math.max(0.5, (pretextUs / maxUs) * 100) + '%';
+  document.getElementById('val-pretext').textContent = pretextUs < 1 ? pretextUs.toFixed(3) + ' µs' : pretextUs.toFixed(1) + ' µs';
+
+  document.getElementById('bar-canvas').style.width = Math.max(0.5, (canvasUs / maxUs) * 100) + '%';
+  document.getElementById('val-canvas').textContent = canvasUs.toFixed(1) + ' µs';
+
+  document.getElementById('bar-batched').style.width = Math.max(0.5, (batchedUs / maxUs) * 100) + '%';
+  document.getElementById('val-batched').textContent = batchedUs.toFixed(1) + ' µs';
+
+  document.getElementById('bar-interleaved').style.width = Math.max(0.5, (interleavedUs / maxUs) * 100) + '%';
+  document.getElementById('val-interleaved').textContent = interleavedUs.toFixed(1) + ' µs';
+
+  // Update hero
+  document.getElementById('hero-perf').textContent = pretextUs < 1 ? pretextUs.toFixed(3) : pretextUs.toFixed(1);
+
+  const speedup = (interleavedUs / pretextUs).toFixed(0);
+  benchStatus.textContent = `Done. pretext layout() is ${speedup}× faster than interleaved DOM reads on this machine. ` +
+    `All numbers measured live — run again to verify.`;
+
+  benchBtn.disabled = false;
+  benchBtn.textContent = 'Run Again';
 });
 
 // Init
 updateReflow(400);
+window.addEventListener('resize', updateStream);
 </script>
-
 </body>
 </html>
