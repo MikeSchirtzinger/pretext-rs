@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "DOM-free text measurement and line-breaking engine. Rust port of @chenglou/pretext."
 license = "MIT"
-repository = "https://github.com/mschirtzinger/pretext-rs"
+repository = "https://github.com/MikeSchirtzinger/pretext-rs"
 keywords = ["text", "layout", "line-breaking", "wasm", "webgpu"]
 categories = ["text-processing", "wasm", "rendering"]
 
