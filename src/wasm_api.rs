@@ -126,6 +126,44 @@ pub fn wasm_layout_batch(handles_csv: &str, max_width: f64, line_height: f64) ->
     total
 }
 
+/// Prepare + layout, returning actual line content as a JSON array of
+/// `{"text": "...", "width": 123.4}` objects.
+///
+/// Intended for canvas renderers that need to draw each wrapped line.
+#[wasm_bindgen(js_name = "pretextLayoutLines")]
+pub fn wasm_layout_lines(text: &str, max_width: f64) -> String {
+    use crate::{layout_with_lines, prepare_with_segments};
+    let backend = FixedWidthBackend::new();
+    let font = FontSpec::new("16px Inter");
+    let prepared = prepare_with_segments(text, &font, &backend, PrepareOptions::default());
+    let lines = layout_with_lines(&prepared, max_width, 1.0);
+
+    // Hand-roll JSON to avoid a serde_derive dep
+    let mut out = String::from("[");
+    for (i, l) in lines.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"text\":\"");
+        for c in l.text.chars() {
+            match c {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                c if (c as u32) < 0x20 => {
+                    out.push_str(&format!("\\u{:04x}", c as u32));
+                }
+                c => out.push(c),
+            }
+        }
+        out.push_str(&format!("\",\"width\":{}}}", l.width));
+    }
+    out.push(']');
+    out
+}
+
 /// Free all handles from a batch.
 #[wasm_bindgen(js_name = "pretextFreeBatch")]
 pub fn wasm_free_batch(handles_csv: &str) {
