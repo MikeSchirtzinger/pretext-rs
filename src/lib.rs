@@ -27,6 +27,7 @@
 
 pub mod analysis;
 pub mod backend;
+pub mod bidi;
 pub mod gpu_layout;
 pub mod inline_flow;
 pub mod line_break;
@@ -45,7 +46,7 @@ use line_break::{
 };
 use types::{
     EngineProfile, LayoutCursor, LayoutLine, LayoutLineRange, LayoutResult, PrepareOptions,
-    PreparedData, PreparedText, PreparedTextWithSegments, SegmentKind,
+    PrepareProfile, PreparedData, PreparedText, PreparedTextWithSegments, SegmentKind,
 };
 
 /// Prepare text for layout -- the expensive phase.
@@ -79,9 +80,28 @@ pub fn prepare_with_segments(
     options: PrepareOptions,
 ) -> PreparedTextWithSegments {
     let (data, segments) = prepare_internal(text, font, backend, &options, true);
+    let segments = segments.unwrap_or_default();
+
+    // Compute bidi metadata over the reconstructed normalized text. Char
+    // offsets (not bytes) -- see `crate::bidi` on indexing.
+    let seg_levels = if segments.is_empty() {
+        None
+    } else {
+        let mut starts = Vec::with_capacity(segments.len());
+        let mut normalized = String::new();
+        let mut char_cursor: usize = 0;
+        for s in &segments {
+            starts.push(char_cursor);
+            char_cursor += s.chars().count();
+            normalized.push_str(s);
+        }
+        bidi::compute_segment_levels(&normalized, &starts)
+    };
+
     PreparedTextWithSegments {
         data,
-        segments: segments.unwrap_or_default(),
+        segments,
+        seg_levels,
     }
 }
 
@@ -94,7 +114,17 @@ fn prepare_internal(
     keep_segments: bool,
 ) -> (PreparedData, Option<Vec<String>>) {
     let analysis = analyze_text(text, options.white_space);
+    measure_analysis(&analysis, font, backend, keep_segments)
+}
 
+/// Measure an already-analyzed text. Split out so `profile_prepare()` can
+/// time the analysis phase and the measurement phase independently.
+fn measure_analysis(
+    analysis: &analysis::AnalysisResult,
+    font: &FontSpec,
+    backend: &dyn MeasureBackend,
+    keep_segments: bool,
+) -> (PreparedData, Option<Vec<String>>) {
     let space_width = backend.measure_space_width(font);
     let hyphen_width = backend.measure_hyphen_width(font);
     let tab_stop_advance = space_width * 8.0;
@@ -319,6 +349,115 @@ pub fn measure_natural_width(prepared: &PreparedText) -> f64 {
         }
     });
     max_w
+}
+
+// ---- Cache + locale public surface -----------------------------------------
+//
+// Upstream (@chenglou/pretext) maintains process-global caches for canvas
+// text metrics and `Intl.Segmenter` instances, and a locale override that
+// invalidates them. The Rust port has no live global caches today -- the
+// `FixedWidthBackend` is pure, `FontdueBackend` carries its own state, and
+// `unicode-segmentation` is locale-agnostic. These functions exist so
+// downstream code can call the same API without `#[cfg]`-guarding around
+// the platform.
+
+use std::sync::Mutex;
+
+static ANALYSIS_LOCALE: Mutex<Option<String>> = Mutex::new(None);
+
+/// Clear the analysis-phase caches.
+///
+/// No-op today: the Rust port holds no global analysis caches. Exists for
+/// API parity with upstream's `clearAnalysisCaches()`. Safe to call at any
+/// time; future locale-aware backends may hook into this.
+pub fn clear_analysis_caches() {
+    // Intentionally empty -- no global caches to clear. See module docs.
+}
+
+/// Clear the measurement-phase caches.
+///
+/// No-op today: width caches, when present, live inside individual
+/// [`backend::MeasureBackend`] implementations rather than globally. Exists
+/// for API parity with upstream's `clearMeasurementCaches()`.
+pub fn clear_measurement_caches() {
+    // Intentionally empty -- no global caches to clear. See module docs.
+}
+
+/// Clear all pretext-managed caches.
+///
+/// Equivalent to calling [`clear_analysis_caches`] and
+/// [`clear_measurement_caches`] in sequence, matching upstream's
+/// `clearCache()`.
+pub fn clear_cache() {
+    clear_analysis_caches();
+    clear_measurement_caches();
+}
+
+/// Set the analysis-phase locale hint.
+///
+/// Stored globally and available to future locale-aware analysis passes.
+/// The current analysis pipeline (`unicode-segmentation`) ignores the
+/// locale, so this is advisory today. Pass `None` to clear.
+///
+/// Matches upstream's `setAnalysisLocale()`.
+pub fn set_analysis_locale(locale: Option<&str>) {
+    if let Ok(mut slot) = ANALYSIS_LOCALE.lock() {
+        *slot = locale.map(str::to_owned);
+    }
+}
+
+/// Set the global locale hint and clear caches.
+///
+/// Thin wrapper over [`set_analysis_locale`] + [`clear_cache`], matching
+/// upstream's `setLocale()`.
+pub fn set_locale(locale: Option<&str>) {
+    set_analysis_locale(locale);
+    clear_cache();
+}
+
+/// The currently configured analysis locale, if any.
+///
+/// Exposed primarily for testing and diagnostics.
+#[must_use]
+pub fn analysis_locale() -> Option<String> {
+    ANALYSIS_LOCALE.lock().ok().and_then(|g| g.clone())
+}
+
+// ---- profile_prepare -------------------------------------------------------
+
+/// Diagnostic helper that runs the prepare pipeline while separating the
+/// analysis and measurement timings.
+///
+/// Matches upstream's `profilePrepare()`. Used by benchmarks and parity
+/// harnesses -- on the hot path, call [`prepare`] instead.
+#[allow(clippy::needless_pass_by_value)] // API ergonomics: callers pass Default::default()
+#[must_use]
+pub fn profile_prepare(
+    text: &str,
+    font: &FontSpec,
+    backend: &dyn MeasureBackend,
+    options: PrepareOptions,
+) -> PrepareProfile {
+    use std::time::Instant;
+
+    let t0 = Instant::now();
+    let analysis = analyze_text(text, options.white_space);
+    let t1 = Instant::now();
+    let (data, _segments) = measure_analysis(&analysis, font, backend, false);
+    let t2 = Instant::now();
+
+    let breakable_segments = data.breakable_widths.iter().filter(|w| w.is_some()).count();
+
+    let ms = |a: Instant, b: Instant| b.duration_since(a).as_secs_f64() * 1000.0;
+
+    PrepareProfile {
+        analysis_ms: ms(t0, t1),
+        measure_ms: ms(t1, t2),
+        total_ms: ms(t0, t2),
+        analysis_segments: analysis.segments.len(),
+        prepared_segments: data.widths.len(),
+        breakable_segments,
+    }
 }
 
 /// Materialize line text from segment strings.

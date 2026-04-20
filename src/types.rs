@@ -204,6 +204,20 @@ pub struct PreparedTextWithSegments {
     pub(crate) data: PreparedData,
     /// The original text segments, aligned 1:1 with the data arrays.
     pub segments: Vec<String>,
+    /// Optional bidi embedding level per segment. `None` means the text has
+    /// no right-to-left characters and all segments are LTR. See
+    /// [`crate::bidi`]. Advisory only -- not consumed by the line-breaking
+    /// engine.
+    pub(crate) seg_levels: Option<Vec<i8>>,
+}
+
+impl PreparedTextWithSegments {
+    /// Bidi embedding level per segment, if the text contained any
+    /// right-to-left characters. Aligned 1:1 with [`Self::segments`].
+    #[must_use]
+    pub fn seg_levels(&self) -> Option<&[i8]> {
+        self.seg_levels.as_deref()
+    }
 }
 
 /// Cursor position within prepared text -- identifies a specific
@@ -256,4 +270,26 @@ pub struct PrepareOptions {
     pub white_space: WhiteSpaceMode,
     /// Engine profile for browser-specific behavior. Default: native.
     pub profile: Option<EngineProfile>,
+}
+
+/// Diagnostic timing/shape data returned by [`crate::profile_prepare`].
+///
+/// Mirrors upstream `PrepareProfile`. Used by benchmarks and the browser
+/// parity harness to separate the analysis phase from the measurement phase
+/// without duplicating `prepare()` logic.
+#[derive(Debug, Clone, Copy)]
+pub struct PrepareProfile {
+    /// Wall time spent in [`crate::analysis::analyze_text`], in milliseconds.
+    pub analysis_ms: f64,
+    /// Wall time spent in the measurement loop, in milliseconds.
+    pub measure_ms: f64,
+    /// Total wall time for `prepare()`, in milliseconds.
+    pub total_ms: f64,
+    /// Number of segments produced by analysis (before measurement).
+    pub analysis_segments: usize,
+    /// Number of segments in the resulting prepared text.
+    pub prepared_segments: usize,
+    /// Number of segments that carry per-grapheme breakable widths
+    /// (overflow-wrap candidates).
+    pub breakable_segments: usize,
 }

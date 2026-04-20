@@ -59,7 +59,23 @@ The WASM API exposes:
 
 The goal is behavioral parity with the original on the core pipeline: segment analysis, space/glue handling, tab stops, soft hyphens, hard breaks, CJK word-level breaking, trailing-space hang, and line-end advance accounting. Discretionary hyphens and the streaming cursor API are ported as well.
 
+Bidi metadata (`pretext::bidi`) is ported verbatim from the upstream `bidi.ts` — embedding-level tables, the W1–W7 / N1–N2 / I1–I2 rules, and the `(len / numBidi) < 0.3` paragraph-level heuristic. `prepare_with_segments()` attaches a per-segment level array (`seg_levels()`) whenever the text contains right-to-left characters. See the module-level docs for the char-index vs UTF-16 indexing note.
+
 Divergences from the original are intentional where Rust idioms differ (error handling, API naming, zero-copy where possible) and are documented in the relevant module. Please file an issue if you find a behavioral difference that isn't a deliberate port choice.
+
+### Emoji width: deliberate scope boundary
+
+The JS reference corrects canvas `measureText` emoji inflation at runtime: it probes the active font's emoji glyph width, stores a per-font `emojiCorrection` factor, and subtracts `emojiCount × emojiCorrection` from every segment width (see upstream `measurement.ts::getCorrectedSegmentWidth`). That mechanism is browser-specific — it depends on canvas metrics for emoji glyphs that the host OS actually has installed.
+
+Rust backends in this crate take a simpler stance:
+
+- `SegmentMetrics::emoji_count` is still tracked during measurement (all three backends populate it).
+- No runtime `emojiCorrection` factor is computed, and none is applied to widths.
+- Consequently, text containing emoji may produce widths (and therefore line breaks) that diverge from the JS original.
+
+This is intentional. The value `emoji_count` is exposed so downstream callers who need the JS semantics can compute their own correction from it. If you're writing a custom backend that does measure emoji precisely (for example, a `fontdue` build with an emoji-aware face), the pipeline will happily honor its widths.
+
+If a future backend wants to internalize this correction, it can — the field is there waiting.
 
 ## Credits
 
