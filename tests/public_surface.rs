@@ -1,78 +1,10 @@
-//! Public-surface parity with upstream JS.
-//!
-//! Upstream exports: clearCache, clearAnalysisCaches, clearMeasurementCaches,
-//! setLocale, setAnalysisLocale, profilePrepare. These tests verify the
-//! equivalent Rust APIs exist and behave reasonably. Implementations may be
-//! thin (no-op for caches we don't have, locale stored but not consulted);
-//! the goal is API surface parity so downstream users don't have to #[cfg]
-//! around missing symbols.
+//! Public diagnostic-surface tests.
 
-use pretext::backend::{fixed::FixedWidthBackend, FontSpec};
+use pretext::backend::{FontSpec, fixed::FixedWidthBackend};
 
-// ---- Cache clearers --------------------------------------------------------
-
-#[test]
-fn clear_cache_is_callable() {
-    // No return, no panics. Idempotent.
-    pretext::clear_cache();
-    pretext::clear_cache();
-}
-
-#[test]
-fn clear_analysis_caches_is_callable() {
-    pretext::clear_analysis_caches();
-}
-
-#[test]
-fn clear_measurement_caches_is_callable() {
-    pretext::clear_measurement_caches();
-}
-
-#[test]
-fn clear_cache_does_not_corrupt_subsequent_prepare() {
-    let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
-
-    let before = pretext::prepare("Hello world", &font, &backend, Default::default());
-    let before_layout = pretext::layout(&before, 200.0, 24.0);
-
-    pretext::clear_cache();
-
-    let after = pretext::prepare("Hello world", &font, &backend, Default::default());
-    let after_layout = pretext::layout(&after, 200.0, 24.0);
-
-    assert_eq!(before_layout.line_count, after_layout.line_count);
-    assert!((before_layout.height - after_layout.height).abs() < 1e-9);
-}
-
-// ---- Locale setters --------------------------------------------------------
-
-#[test]
-fn set_locale_accepts_some_and_none() {
-    pretext::set_locale(Some("en"));
-    pretext::set_locale(Some("ja"));
-    pretext::set_locale(None);
-}
-
-#[test]
-fn set_analysis_locale_accepts_some_and_none() {
-    pretext::set_analysis_locale(Some("en"));
-    pretext::set_analysis_locale(None);
-}
-
-#[test]
-fn set_locale_does_not_break_layout() {
-    pretext::set_locale(Some("ja"));
-
-    let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
-    let prepared = pretext::prepare("Hello world", &font, &backend, Default::default());
-    let result = pretext::layout(&prepared, 200.0, 24.0);
-
-    assert!(result.line_count >= 1);
-
-    // Restore default so other tests aren't affected.
-    pretext::set_locale(None);
+#[track_caller]
+fn valid<T>(result: pretext::Result<T>) -> T {
+    result.expect("test input is valid")
 }
 
 // ---- profile_prepare -------------------------------------------------------
@@ -80,14 +12,14 @@ fn set_locale_does_not_break_layout() {
 #[test]
 fn profile_prepare_returns_populated_profile() {
     let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
+    let font = valid(FontSpec::new("16px Inter"));
 
-    let profile = pretext::profile_prepare(
+    let profile = valid(pretext::profile_prepare(
         "The quick brown fox jumps over the lazy dog.",
         &font,
         &backend,
         Default::default(),
-    );
+    ));
 
     // Timings must be non-negative (may legitimately be 0 on very fast runs).
     assert!(profile.analysis_ms >= 0.0);
@@ -114,9 +46,14 @@ fn profile_prepare_returns_populated_profile() {
 #[test]
 fn profile_prepare_empty_text() {
     let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
+    let font = valid(FontSpec::new("16px Inter"));
 
-    let profile = pretext::profile_prepare("", &font, &backend, Default::default());
+    let profile = valid(pretext::profile_prepare(
+        "",
+        &font,
+        &backend,
+        Default::default(),
+    ));
     assert_eq!(profile.analysis_segments, 0);
     assert_eq!(profile.prepared_segments, 0);
     assert_eq!(profile.breakable_segments, 0);

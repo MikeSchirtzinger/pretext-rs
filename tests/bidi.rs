@@ -1,14 +1,15 @@
-//! Bidi parity tests.
+//! Bidi behavior and public integration tests.
 //!
-//! Ground-truth expected values were generated from the upstream JS reference
-//! (`@chenglou/pretext/dist/bidi.js::computeSegmentLevels`) and hard-coded
-//! here. Any divergence means the Rust port drifted from upstream.
-//!
-//! Regenerate with:
-//!   node -e 'const {computeSegmentLevels} = require("./node_modules/@chenglou/pretext/dist/bidi.js"); ...'
-//! (see commit history for the original generator script).
+//! Paragraph direction follows the first strong directional character; this
+//! avoids the superseded ratio heuristic that incorrectly made any mixed LTR
+//! paragraph RTL.
 
-use pretext::bidi::{classify_char, compute_bidi_levels, compute_segment_levels, BidiType};
+use pretext::bidi::{BidiType, classify_char, compute_bidi_levels, compute_segment_levels};
+
+#[track_caller]
+fn valid<T>(result: pretext::Result<T>) -> T {
+    result.expect("test input is valid")
+}
 
 // ---- Classifier ------------------------------------------------------------
 
@@ -86,110 +87,182 @@ fn hebrew_only_single_level() {
     assert_eq!(got, vec![1, 1, 1]);
 }
 
-// ---- compute_segment_levels (JS ground truth) ------------------------------
+#[test]
+fn emoji_is_neutral_and_follows_the_rtl_paragraph_level() {
+    assert_eq!(classify_char('\u{1F600}'), BidiType::ON);
 
-// Expected outputs captured from JS `computeSegmentLevels`:
+    let got = compute_bidi_levels("\u{1F600}\u{05D0}\u{05D1}").expect("bidi present");
+    assert_eq!(got, vec![1, 1, 1]);
+    assert!(compute_bidi_levels("\u{1F600} hello").is_none());
+}
+
+#[test]
+fn rtl_isolate_resolves_without_changing_surrounding_ltr_text() {
+    assert_eq!(classify_char('\u{2067}'), BidiType::RLI);
+    assert_eq!(classify_char('\u{2069}'), BidiType::PDI);
+
+    let got = compute_bidi_levels("a \u{2067}\u{05D0}\u{05D1}\u{2069} z")
+        .expect("RTL isolate requires bidi metadata");
+    assert_eq!(got, vec![0, 0, 0, 1, 1, 0, 0, 0]);
+}
+
+#[test]
+fn first_strong_isolate_detects_its_own_rtl_direction() {
+    assert_eq!(classify_char('\u{2068}'), BidiType::FSI);
+
+    let got = compute_bidi_levels("a \u{2068}\u{05D0}\u{05D1}\u{2069} z")
+        .expect("first-strong isolate requires bidi metadata");
+    assert_eq!(got, vec![0, 0, 0, 1, 1, 0, 0, 0]);
+}
+
+#[test]
+fn explicit_rtl_embedding_resolves_nested_ltr_text() {
+    assert_eq!(classify_char('\u{202B}'), BidiType::RLE);
+    assert_eq!(classify_char('\u{202C}'), BidiType::PDF);
+
+    let got = compute_bidi_levels("a \u{202B}AB\u{202C} z")
+        .expect("RTL embedding requires bidi metadata");
+    assert_eq!(got.len(), 8);
+    assert_eq!(&got[..3], &[0, 0, 0]);
+    assert_eq!(&got[3..5], &[2, 2]);
+    assert_eq!(&got[6..], &[0, 0]);
+}
+
+#[test]
+fn paragraphs_resolve_direction_independently() {
+    let got = compute_bidi_levels("abc \u{05D0}\u{05D1}\n\u{05D0}\u{05D1} abc")
+        .expect("both paragraphs contain RTL text");
+    assert_eq!(got, vec![0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 2, 2, 2]);
+}
+
+// ---- compute_segment_levels ------------------------------------------------
+
+// Representative resolved segment-start levels:
 //
 // all_latin      "hello world"                 starts=[0,5,6]        → null
 // hebrew_word    "אבג world"                   starts=[0,3,4]        → [1,1,2]
 // arabic_word    "السلام"                      starts=[0]            → [1]
-// mixed_ltr_rtl  "hello אב world"              starts=[0,5,6,8,9]    → [2,1,1,1,2]
+// mixed_ltr_rtl  "hello אב world"              starts=[0,5,6,8,9]    → [0,0,1,0,0]
 // digits_only    "12345"                       starts=[0]            → null
-// arabic_digits  "٠١ test"                     starts=[0,2,3]        → [2,1,2]
+// arabic_digits  "٠١ test"                     starts=[0,2,3]        → [2,0,0]
 // empty          ""                            starts=[]             → null
 // spaces_only    "   "                         starts=[0]            → null
 // hebrew_single  "אבג"                         starts=[0]            → [1]
-// arabic_latin   "abc الس xyz"                 starts=[0,3,4,7,8]    → [2,1,1,1,2]
+// arabic_latin   "abc الس xyz"                 starts=[0,3,4,7,8]    → [0,0,1,0,0]
 
 #[test]
 fn seg_levels_all_latin_none() {
-    assert!(compute_segment_levels("hello world", &[0, 5, 6]).is_none());
+    assert!(valid(compute_segment_levels("hello world", &[0, 5, 6])).is_none());
 }
 
 #[test]
 fn seg_levels_hebrew_word() {
-    let got = compute_segment_levels("\u{05D0}\u{05D1}\u{05D2} world", &[0, 3, 4])
-        .expect("bidi present");
+    let got = valid(compute_segment_levels(
+        "\u{05D0}\u{05D1}\u{05D2} world",
+        &[0, 3, 4],
+    ))
+    .expect("bidi present");
     assert_eq!(got, vec![1, 1, 2]);
 }
 
 #[test]
 fn seg_levels_arabic_word() {
-    let got = compute_segment_levels("\u{0627}\u{0644}\u{0633}\u{0644}\u{0627}\u{0645}", &[0])
-        .expect("bidi present");
+    let got = valid(compute_segment_levels(
+        "\u{0627}\u{0644}\u{0633}\u{0644}\u{0627}\u{0645}",
+        &[0],
+    ))
+    .expect("bidi present");
     assert_eq!(got, vec![1]);
 }
 
 #[test]
 fn seg_levels_mixed_ltr_rtl() {
-    let got = compute_segment_levels("hello \u{05D0}\u{05D1} world", &[0, 5, 6, 8, 9])
-        .expect("bidi present");
-    assert_eq!(got, vec![2, 1, 1, 1, 2]);
+    let got = valid(compute_segment_levels(
+        "hello \u{05D0}\u{05D1} world",
+        &[0, 5, 6, 8, 9],
+    ))
+    .expect("bidi present");
+    assert_eq!(got, vec![0, 0, 1, 0, 0]);
 }
 
 #[test]
 fn seg_levels_digits_only_none() {
-    assert!(compute_segment_levels("12345", &[0]).is_none());
+    assert!(valid(compute_segment_levels("12345", &[0])).is_none());
 }
 
 #[test]
 fn seg_levels_arabic_indic_digits() {
-    let got = compute_segment_levels("\u{0660}\u{0661} test", &[0, 2, 3]).expect("bidi present");
-    assert_eq!(got, vec![2, 1, 2]);
+    let got =
+        valid(compute_segment_levels("\u{0660}\u{0661} test", &[0, 2, 3])).expect("bidi present");
+    assert_eq!(got, vec![2, 0, 0]);
 }
 
 #[test]
 fn seg_levels_empty_none() {
-    assert!(compute_segment_levels("", &[]).is_none());
+    assert!(valid(compute_segment_levels("", &[])).is_none());
 }
 
 #[test]
 fn seg_levels_spaces_only_none() {
-    assert!(compute_segment_levels("   ", &[0]).is_none());
+    assert!(valid(compute_segment_levels("   ", &[0])).is_none());
 }
 
 #[test]
 fn seg_levels_hebrew_single_segment() {
-    let got = compute_segment_levels("\u{05D0}\u{05D1}\u{05D2}", &[0]).expect("bidi present");
+    let got =
+        valid(compute_segment_levels("\u{05D0}\u{05D1}\u{05D2}", &[0])).expect("bidi present");
     assert_eq!(got, vec![1]);
 }
 
 #[test]
 fn seg_levels_arabic_latin_interleaved() {
-    let got = compute_segment_levels(
+    let got = valid(compute_segment_levels(
         "abc \u{0627}\u{0644}\u{0633} xyz",
         &[0, 3, 4, 7, 8],
-    )
+    ))
     .expect("bidi present");
-    assert_eq!(got, vec![2, 1, 1, 1, 2]);
+    assert_eq!(got, vec![0, 0, 1, 0, 0]);
 }
 
 // ---- Integration: prepare_with_segments attaches seg_levels ----------------
 
 #[test]
 fn prepare_with_segments_attaches_seg_levels_for_bidi_text() {
-    use pretext::{backend::{fixed::FixedWidthBackend, FontSpec}, prepare_with_segments};
+    use pretext::{
+        backend::{FontSpec, fixed::FixedWidthBackend},
+        prepare_with_segments,
+    };
 
     let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
-    let prepared = prepare_with_segments(
+    let font = valid(FontSpec::new("16px Inter"));
+    let prepared = valid(prepare_with_segments(
         "hello \u{05D0}\u{05D1} world",
         &font,
         &backend,
         Default::default(),
-    );
+    ));
 
-    let levels = prepared.seg_levels().expect("seg_levels populated for bidi text");
+    let levels = prepared
+        .seg_levels()
+        .expect("seg_levels populated for bidi text");
     assert!(!levels.is_empty());
 }
 
 #[test]
 fn prepare_with_segments_no_seg_levels_for_pure_latin() {
-    use pretext::{backend::{fixed::FixedWidthBackend, FontSpec}, prepare_with_segments};
+    use pretext::{
+        backend::{FontSpec, fixed::FixedWidthBackend},
+        prepare_with_segments,
+    };
 
     let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
-    let prepared = prepare_with_segments("hello world", &font, &backend, Default::default());
+    let font = valid(FontSpec::new("16px Inter"));
+    let prepared = valid(prepare_with_segments(
+        "hello world",
+        &font,
+        &backend,
+        Default::default(),
+    ));
 
     assert!(prepared.seg_levels().is_none());
 }

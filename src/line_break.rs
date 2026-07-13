@@ -16,12 +16,13 @@ use crate::types::{
 
 /// Internal line representation during walking.
 #[derive(Debug, Clone)]
-pub struct InternalLine {
-    pub start_segment: usize,
-    pub start_grapheme: usize,
-    pub end_segment: usize,
-    pub end_grapheme: usize,
-    pub width: f64,
+pub(crate) struct InternalLine {
+    pub(crate) start_segment: usize,
+    pub(crate) start_grapheme: usize,
+    pub(crate) end_segment: usize,
+    pub(crate) end_grapheme: usize,
+    pub(crate) width: f64,
+    pub(crate) ends_with_discretionary_hyphen: bool,
 }
 
 /// Pending break state -- tracks the best break opportunity found so far.
@@ -31,6 +32,28 @@ struct PendingBreak {
     grapheme_index: usize,
     fit_width: f64,
     paint_width: f64,
+    ends_with_discretionary_hyphen: bool,
+}
+
+/// Borrowed, structurally complete entry from `PreparedData`'s parallel
+/// arrays. Returning `None` for drifted state keeps every walker bounded.
+#[derive(Clone, Copy)]
+struct SegmentView<'a> {
+    kind: SegmentKind,
+    width: f64,
+    line_end_fit_advance: f64,
+    line_end_paint_advance: f64,
+    breakable_widths: Option<&'a [f64]>,
+}
+
+fn segment_at(data: &PreparedData, index: usize) -> Option<SegmentView<'_>> {
+    Some(SegmentView {
+        kind: *data.kinds.get(index)?,
+        width: *data.widths.get(index)?,
+        line_end_fit_advance: *data.line_end_fit_advances.get(index)?,
+        line_end_paint_advance: *data.line_end_paint_advances.get(index)?,
+        breakable_widths: data.breakable_widths.get(index)?.as_deref(),
+    })
 }
 
 // ---- Simple fast path -------------------------------------------------------
@@ -40,67 +63,20 @@ struct PendingBreak {
 /// Only handles `Text`, `Space`, and `ZeroWidthBreak` segments. No chunks,
 /// no tabs, no soft hyphens. This is the common case for prose.
 #[must_use]
-pub fn count_lines_simple(data: &PreparedData, max_width: f64, profile: &EngineProfile) -> usize {
-    let mut line_count = 1;
-    let mut line_w = 0.0;
-    let epsilon = profile.line_fit_epsilon;
-    let seg_count = data.widths.len();
-
-    if seg_count == 0 {
-        return 1;
-    }
-
-    let mut i = 0;
-    while i < seg_count {
-        let kind = data.kinds[i];
-        let width = data.widths[i];
-
-        let new_w = line_w + width;
-
-        if kind == SegmentKind::Space || kind == SegmentKind::ZeroWidthBreak {
-            // Breakable -- update line width and move on
-            line_w = new_w;
-            i += 1;
-            continue;
-        }
-
-        // Text segment
-        if new_w > max_width + epsilon {
-            // Overflow -- need to break
-
-            // Find the last break opportunity
-            if i > 0 && can_break_before(data, i) {
-                // Break before this segment
-                line_count += 1;
-                line_w = width;
-            } else if let Some(ref bw) = data.breakable_widths[i] {
-                // Break within this segment (overflow-wrap: break-word)
-                let (lines, remaining_w) =
-                    break_within_segment(bw, line_w, max_width, epsilon);
-                line_count += lines;
-                line_w = remaining_w;
-            } else {
-                // Can't break -- segment overflows the line
-                if line_w > 0.0 {
-                    line_count += 1;
-                    line_w = width;
-                } else {
-                    // Segment alone is wider than max_width -- accept it
-                    line_w = new_w;
-                }
-            }
-        } else {
-            line_w = new_w;
-        }
-
-        i += 1;
-    }
-
+pub(crate) fn count_lines_simple(
+    data: &PreparedData,
+    max_width: f64,
+    profile: &EngineProfile,
+) -> usize {
+    let mut line_count = 0_usize;
+    walk_lines_simple(data, max_width, profile, |_| {
+        line_count = line_count.saturating_add(1);
+    });
     line_count
 }
 
 /// Walk lines using the simple fast path, calling a callback per line.
-pub fn walk_lines_simple<F>(
+pub(crate) fn walk_lines_simple<F>(
     data: &PreparedData,
     max_width: f64,
     profile: &EngineProfile,
@@ -109,7 +85,7 @@ pub fn walk_lines_simple<F>(
     F: FnMut(InternalLine),
 {
     let epsilon = profile.line_fit_epsilon;
-    let seg_count = data.widths.len();
+    let seg_count = data.segment_count();
 
     if seg_count == 0 {
         on_line(InternalLine {
@@ -118,6 +94,7 @@ pub fn walk_lines_simple<F>(
             end_segment: 0,
             end_grapheme: 0,
             width: 0.0,
+            ends_with_discretionary_hyphen: false,
         });
         return;
     }
@@ -125,25 +102,40 @@ pub fn walk_lines_simple<F>(
     let mut line_start_seg = 0;
     let mut line_start_grapheme = 0;
     let mut line_w = 0.0;
+    let mut has_content = false;
     let mut pending: Option<PendingBreak> = None;
 
     let mut i = 0;
     while i < seg_count {
-        let kind = data.kinds[i];
-        let width = data.widths[i];
-        let fit_advance = data.line_end_fit_advances[i];
+        let Some(segment) = segment_at(data, i) else {
+            break;
+        };
+        let kind = segment.kind;
+        let segment_start_grapheme = if line_start_seg == i {
+            line_start_grapheme
+        } else {
+            0
+        };
+        let width = remaining_segment_width(segment, segment_start_grapheme);
+        let fit_advance = segment.line_end_fit_advance;
 
         let new_w = line_w + width;
 
         // Track break opportunities
         if kind.can_break_after() {
-            pending = Some(PendingBreak {
-                segment_index: i + 1,
-                grapheme_index: 0,
-                fit_width: line_w + fit_advance,
-                paint_width: line_w + data.line_end_paint_advances[i],
-            });
+            let content_after = has_content || is_visible_line_content(kind);
+            let fit_width = line_w + fit_advance;
+            if content_after && fit_width <= max_width + epsilon {
+                pending = Some(PendingBreak {
+                    segment_index: i + 1,
+                    grapheme_index: 0,
+                    fit_width,
+                    paint_width: line_w + segment.line_end_paint_advance,
+                    ends_with_discretionary_hyphen: kind == SegmentKind::SoftHyphen,
+                });
+            }
             line_w = new_w;
+            has_content = content_after;
             i += 1;
             continue;
         }
@@ -160,69 +152,96 @@ pub fn walk_lines_simple<F>(
                     end_segment: pb.segment_index,
                     end_grapheme: pb.grapheme_index,
                     width: pb.paint_width,
+                    ends_with_discretionary_hyphen: pb.ends_with_discretionary_hyphen,
                 });
                 line_start_seg = pb.segment_index;
                 line_start_grapheme = pb.grapheme_index;
                 // Skip leading spaces on new line
                 while line_start_seg < seg_count
-                    && data.kinds[line_start_seg] == SegmentKind::Space
+                    && segment_at(data, line_start_seg)
+                        .is_some_and(|candidate| candidate.kind == SegmentKind::Space)
                 {
                     line_start_seg += 1;
                 }
-                line_w = recompute_line_width(data, line_start_seg, i);
+                (line_w, has_content, pending) =
+                    replay_line_state(data, line_start_seg, i, max_width, epsilon);
                 continue; // Re-evaluate current segment
             }
 
-            // Try grapheme breaking within segment
-            if let Some(ref bw) = data.breakable_widths[i]
-                && let Some(break_at) = find_grapheme_break(bw, line_w, max_width, epsilon)
+            let glued_to_previous = i > line_start_seg
+                && segment_at(data, i.saturating_sub(1))
+                    .is_some_and(|previous| previous.kind == SegmentKind::Glue);
+
+            // Try grapheme breaking within a segment unless doing so would
+            // split a non-breaking glue connection.
+            if !glued_to_previous
+                && let Some(bw) = segment.breakable_widths
+                && let Some((break_at, break_width)) = find_grapheme_break(
+                    bw,
+                    segment_start_grapheme,
+                    line_w,
+                    max_width,
+                    epsilon,
+                    !has_content,
+                )
             {
-                let break_width: f64 = bw[..break_at].iter().sum();
                 on_line(InternalLine {
                     start_segment: line_start_seg,
                     start_grapheme: line_start_grapheme,
                     end_segment: i,
                     end_grapheme: break_at,
                     width: line_w + break_width,
+                    ends_with_discretionary_hyphen: false,
                 });
                 line_start_seg = i;
                 line_start_grapheme = break_at;
-                line_w = bw[break_at..].iter().sum();
-                i += 1;
+                line_w = 0.0;
+                has_content = false;
+                pending = None;
                 continue;
             }
 
             // Force break before this segment if we have content
-            if line_w > 0.0 && line_start_seg < i {
+            if !glued_to_previous && has_content && line_start_seg < i {
+                let paint_width =
+                    compute_paint_width_range(data, line_start_seg, line_start_grapheme, i, 0);
                 on_line(InternalLine {
                     start_segment: line_start_seg,
                     start_grapheme: line_start_grapheme,
                     end_segment: i,
                     end_grapheme: 0,
-                    width: line_w,
+                    width: paint_width,
+                    ends_with_discretionary_hyphen: false,
                 });
                 line_start_seg = i;
                 line_start_grapheme = 0;
-                line_w = width;
+                line_w = 0.0;
+                has_content = false;
+                pending = None;
+                continue;
             } else {
                 // Accept overflow on a single segment
                 line_w = new_w;
+                has_content = true;
             }
         } else {
             line_w = new_w;
+            has_content = true;
         }
 
         i += 1;
     }
 
     // Emit final line
-    let final_width = compute_paint_width(data, line_start_seg, seg_count);
+    let final_width =
+        compute_paint_width_range(data, line_start_seg, line_start_grapheme, seg_count, 0);
     on_line(InternalLine {
         start_segment: line_start_seg,
         start_grapheme: line_start_grapheme,
         end_segment: seg_count,
         end_grapheme: 0,
         width: final_width,
+        ends_with_discretionary_hyphen: false,
     });
 }
 
@@ -230,16 +249,20 @@ pub fn walk_lines_simple<F>(
 
 /// Count lines using the full walker with chunk support.
 #[must_use]
-pub fn count_lines_full(data: &PreparedData, max_width: f64, profile: &EngineProfile) -> usize {
-    let mut line_count = 0;
+pub(crate) fn count_lines_full(
+    data: &PreparedData,
+    max_width: f64,
+    profile: &EngineProfile,
+) -> usize {
+    let mut line_count: usize = 0;
     walk_lines_full(data, max_width, profile, |_| {
-        line_count += 1;
+        line_count = line_count.saturating_add(1);
     });
     line_count
 }
 
 /// Walk lines with full chunk/tab/soft-hyphen support.
-pub fn walk_lines_full<F>(
+pub(crate) fn walk_lines_full<F>(
     data: &PreparedData,
     max_width: f64,
     profile: &EngineProfile,
@@ -247,7 +270,7 @@ pub fn walk_lines_full<F>(
 ) where
     F: FnMut(InternalLine),
 {
-    let seg_count = data.widths.len();
+    let seg_count = data.segment_count();
 
     if seg_count == 0 {
         on_line(InternalLine {
@@ -256,7 +279,18 @@ pub fn walk_lines_full<F>(
             end_segment: 0,
             end_grapheme: 0,
             width: 0.0,
+            ends_with_discretionary_hyphen: false,
         });
+        return;
+    }
+
+    if data.chunks.is_empty() {
+        let implicit_chunk = PreparedLineChunk {
+            start_segment_index: 0,
+            end_segment_index: seg_count,
+            consumed_end_segment_index: seg_count,
+        };
+        walk_chunk(data, &implicit_chunk, max_width, profile, &mut on_line);
         return;
     }
 
@@ -277,17 +311,20 @@ fn walk_chunk<F>(
     F: FnMut(InternalLine),
 {
     let epsilon = profile.line_fit_epsilon;
-    let chunk_start = chunk.start_segment_index;
-    let chunk_end = chunk.end_segment_index;
+    let seg_count = data.segment_count();
+    let chunk_start = chunk.start_segment_index.min(seg_count);
+    let chunk_end = chunk.end_segment_index.clamp(chunk_start, seg_count);
+    let consumed_end = chunk.consumed_end_segment_index.clamp(chunk_end, seg_count);
 
     if chunk_start >= chunk_end {
         // Empty chunk (consecutive hard breaks) -- emit empty line
         on_line(InternalLine {
             start_segment: chunk_start,
             start_grapheme: 0,
-            end_segment: chunk.consumed_end_segment_index,
+            end_segment: consumed_end,
             end_grapheme: 0,
             width: 0.0,
+            ends_with_discretionary_hyphen: false,
         });
         return;
     }
@@ -300,8 +337,16 @@ fn walk_chunk<F>(
 
     let mut i = chunk_start;
     while i < chunk_end {
-        let kind = data.kinds[i];
-        let width = data.widths[i];
+        let Some(segment) = segment_at(data, i) else {
+            break;
+        };
+        let kind = segment.kind;
+        let segment_start_grapheme = if line_start_seg == i {
+            line_start_grapheme
+        } else {
+            0
+        };
+        let width = remaining_segment_width(segment, segment_start_grapheme);
 
         // Tab width is computed dynamically based on current line position
         let effective_width = if kind == SegmentKind::Tab {
@@ -317,24 +362,13 @@ fn walk_chunk<F>(
                 // Invisible unless chosen as break point
                 // Set pending break with discretionary hyphen width
                 let fit_w = line_w + data.discretionary_hyphen_width;
-                if fit_w <= max_width + epsilon || !has_content {
+                if has_content && fit_w <= max_width + epsilon {
                     pending = Some(PendingBreak {
                         segment_index: i + 1,
                         grapheme_index: 0,
                         fit_width: fit_w,
                         paint_width: fit_w, // Hyphen is visible at break
-                    });
-                }
-                if profile.prefer_early_soft_hyphen_break
-                    && fit_w <= max_width + epsilon
-                    && has_content
-                {
-                    // Safari: prefer breaking here immediately
-                    pending = Some(PendingBreak {
-                        segment_index: i + 1,
-                        grapheme_index: 0,
-                        fit_width: fit_w,
-                        paint_width: fit_w,
+                        ends_with_discretionary_hyphen: true,
                     });
                 }
                 i += 1;
@@ -348,16 +382,21 @@ fn walk_chunk<F>(
             | SegmentKind::Tab
             | SegmentKind::ZeroWidthBreak => {
                 // Breakable point
-                let fit_advance = data.line_end_fit_advances[i];
-                let paint_advance = data.line_end_paint_advances[i];
-                pending = Some(PendingBreak {
-                    segment_index: i + 1,
-                    grapheme_index: 0,
-                    fit_width: line_w + fit_advance,
-                    paint_width: line_w + paint_advance,
-                });
+                let fit_advance = segment.line_end_fit_advance;
+                let paint_advance = segment.line_end_paint_advance;
+                let content_after = has_content || is_visible_line_content(kind);
+                let fit_width = line_w + fit_advance;
+                if content_after && fit_width <= max_width + epsilon {
+                    pending = Some(PendingBreak {
+                        segment_index: i + 1,
+                        grapheme_index: 0,
+                        fit_width,
+                        paint_width: line_w + paint_advance,
+                        ends_with_discretionary_hyphen: false,
+                    });
+                }
                 line_w = new_w;
-                has_content = true;
+                has_content = content_after;
                 i += 1;
             }
             SegmentKind::Glue => {
@@ -368,9 +407,10 @@ fn walk_chunk<F>(
             }
             SegmentKind::Text => {
                 // Check overflow
-                if new_w > max_width + epsilon && has_content {
+                if new_w > max_width + epsilon {
                     // Try pending break
-                    if let Some(pb) = pending.take()
+                    if has_content
+                        && let Some(pb) = pending.take()
                         && pb.fit_width <= max_width + epsilon
                     {
                         on_line(InternalLine {
@@ -379,56 +419,71 @@ fn walk_chunk<F>(
                             end_segment: pb.segment_index,
                             end_grapheme: pb.grapheme_index,
                             width: pb.paint_width,
+                            ends_with_discretionary_hyphen: pb.ends_with_discretionary_hyphen,
                         });
                         line_start_seg = skip_leading_spaces(data, pb.segment_index, chunk_end);
                         line_start_grapheme = 0;
-                        line_w = recompute_line_width(data, line_start_seg, i);
-                        has_content = line_start_seg < i;
+                        (line_w, has_content, pending) =
+                            replay_line_state(data, line_start_seg, i, max_width, epsilon);
                         continue; // Re-evaluate current segment
                     }
 
-                    // Try grapheme breaking
-                    if let Some(ref bw) = data.breakable_widths[i] {
-                        let mut accum = line_w;
-                        let mut break_at = 0;
-                        for (gi, gw) in bw.iter().enumerate() {
-                            if accum + gw > max_width + epsilon && gi > 0 {
-                                break;
-                            }
-                            accum += gw;
-                            break_at = gi + 1;
-                        }
+                    let glued_to_previous = i > line_start_seg
+                        && segment_at(data, i.saturating_sub(1))
+                            .is_some_and(|previous| previous.kind == SegmentKind::Glue);
 
-                        if break_at > 0 && break_at < bw.len() {
-                            let break_width: f64 = bw[..break_at].iter().sum();
-                            on_line(InternalLine {
-                                start_segment: line_start_seg,
-                                start_grapheme: line_start_grapheme,
-                                end_segment: i,
-                                end_grapheme: break_at,
-                                width: line_w + break_width,
-                            });
-                            line_start_seg = i;
-                            line_start_grapheme = break_at;
-                            line_w = bw[break_at..].iter().sum();
-                            has_content = true;
-                            i += 1;
-                            continue;
-                        }
+                    // Try grapheme breaking unless this text is attached to
+                    // the preceding run by non-breaking glue.
+                    if !glued_to_previous
+                        && let Some(bw) = segment.breakable_widths
+                        && let Some((break_at, break_width)) = find_grapheme_break(
+                            bw,
+                            segment_start_grapheme,
+                            line_w,
+                            max_width,
+                            epsilon,
+                            !has_content,
+                        )
+                    {
+                        on_line(InternalLine {
+                            start_segment: line_start_seg,
+                            start_grapheme: line_start_grapheme,
+                            end_segment: i,
+                            end_grapheme: break_at,
+                            width: line_w + break_width,
+                            ends_with_discretionary_hyphen: false,
+                        });
+                        line_start_seg = i;
+                        line_start_grapheme = break_at;
+                        line_w = 0.0;
+                        has_content = false;
+                        pending = None;
+                        continue;
                     }
 
                     // Force break before this segment
-                    if line_start_seg < i {
+                    if !glued_to_previous && has_content && line_start_seg < i {
+                        let paint_width = compute_paint_width_range(
+                            data,
+                            line_start_seg,
+                            line_start_grapheme,
+                            i,
+                            0,
+                        );
                         on_line(InternalLine {
                             start_segment: line_start_seg,
                             start_grapheme: line_start_grapheme,
                             end_segment: i,
                             end_grapheme: 0,
-                            width: compute_paint_width(data, line_start_seg, i),
+                            width: paint_width,
+                            ends_with_discretionary_hyphen: false,
                         });
                         line_start_seg = i;
                         line_start_grapheme = 0;
-                        line_w = effective_width;
+                        line_w = 0.0;
+                        has_content = false;
+                        pending = None;
+                        continue;
                     } else {
                         // Accept overflow
                         line_w = new_w;
@@ -443,12 +498,16 @@ fn walk_chunk<F>(
     }
 
     // Emit final line of chunk
-    let end = chunk.consumed_end_segment_index;
+    let end = consumed_end;
+    let terminal_soft_hyphen = chunk_end
+        .checked_sub(1)
+        .and_then(|index| segment_at(data, index))
+        .is_some_and(|segment| segment.kind == SegmentKind::SoftHyphen);
     let final_width = pending
         .as_ref()
-        .filter(|pb| pb.segment_index == chunk_end)
+        .filter(|pb| pb.segment_index == chunk_end && !terminal_soft_hyphen)
         .map_or_else(
-            || compute_paint_width(data, line_start_seg, chunk_end),
+            || compute_paint_width_range(data, line_start_seg, line_start_grapheme, chunk_end, 0),
             |pb| pb.paint_width,
         );
 
@@ -458,6 +517,7 @@ fn walk_chunk<F>(
         end_segment: end,
         end_grapheme: 0,
         width: final_width,
+        ends_with_discretionary_hyphen: false,
     });
 }
 
@@ -472,13 +532,13 @@ fn walk_chunk<F>(
 /// Supports variable `max_width` per line (for text flowing around images).
 #[must_use]
 #[allow(clippy::too_many_lines)]
-pub fn layout_next_line_range(
+pub(crate) fn layout_next_line_range(
     data: &PreparedData,
     start: LayoutCursor,
     max_width: f64,
     profile: &EngineProfile,
 ) -> Option<(LayoutLineRange, LayoutCursor)> {
-    let seg_count = data.widths.len();
+    let seg_count = data.segment_count();
 
     // Terminal cursor — no more lines to produce
     if start.segment_index >= seg_count {
@@ -488,181 +548,154 @@ pub fn layout_next_line_range(
                 LayoutLineRange {
                     width: 0.0,
                     start,
-                    end: LayoutCursor {
-                        segment_index: 0,
-                        grapheme_index: 0,
-                    },
+                    end: LayoutCursor::new(0, 0),
+                    ends_with_discretionary_hyphen: false,
                 },
-                LayoutCursor {
-                    segment_index: 1,
-                    grapheme_index: 0,
+                LayoutCursor::new(1, 0),
+            ));
+        }
+        // A trailing hard break creates one final empty line. Use the same
+        // one-past-terminal sentinel as empty text so it is emitted exactly
+        // once while callers still receive a strictly advancing cursor.
+        if start.segment_index == seg_count
+            && start.grapheme_index == 0
+            && seg_count
+                .checked_sub(1)
+                .and_then(|index| segment_at(data, index))
+                .is_some_and(|segment| segment.kind == SegmentKind::HardBreak)
+        {
+            let next = LayoutCursor::new(seg_count.saturating_add(1), 0);
+            return Some((
+                LayoutLineRange {
+                    width: 0.0,
+                    start,
+                    end: start,
+                    ends_with_discretionary_hyphen: false,
                 },
+                next,
             ));
         }
         return None;
     }
 
-    if seg_count == 0 {
-        if start.segment_index == 0 && start.grapheme_index == 0 {
-            return Some((
-                LayoutLineRange {
-                    width: 0.0,
-                    start,
-                    end: LayoutCursor {
-                        segment_index: 0,
-                        grapheme_index: 0,
-                    },
-                },
-                LayoutCursor {
-                    segment_index: 1,
-                    grapheme_index: 0,
-                },
-            ));
-        }
-        return None;
-    }
+    let start = normalize_cursor(data, start);
 
     let epsilon = profile.line_fit_epsilon;
     let mut line_w = 0.0;
     let mut has_content = false;
     let mut pending: Option<PendingBreak> = None;
 
-    // Handle starting mid-segment (from a previous grapheme break)
     let mut i = start.segment_index;
-    if start.grapheme_index > 0 {
-        if let Some(ref bw) = data.breakable_widths[i] {
-            let safe_gi = start.grapheme_index.min(bw.len());
-            let remaining_width: f64 = bw[safe_gi..].iter().sum();
-            if remaining_width > max_width + epsilon {
-                // Need to break within this remaining portion
-                let mut accum = 0.0;
-                let mut break_at = safe_gi;
-                for (gi, &gw) in bw.iter().enumerate().skip(safe_gi) {
-                    if accum + gw > max_width + epsilon && gi > safe_gi {
-                        break;
-                    }
-                    accum += gw;
-                    break_at = gi + 1;
-                }
-                if break_at < bw.len() {
-                    return Some((
-                        LayoutLineRange {
-                            width: bw[safe_gi..break_at].iter().sum(),
-                            start,
-                            end: LayoutCursor {
-                                segment_index: i,
-                                grapheme_index: break_at,
-                            },
-                        },
-                        LayoutCursor {
-                            segment_index: i,
-                            grapheme_index: break_at,
-                        },
-                    ));
-                }
-            }
-            line_w = remaining_width;
-            has_content = true;
-        }
-        i += 1;
-    }
-
     while i < seg_count {
-        let kind = data.kinds[i];
+        let Some(segment) = segment_at(data, i) else {
+            break;
+        };
+        let kind = segment.kind;
+        let segment_start_grapheme = if i == start.segment_index {
+            start.grapheme_index
+        } else {
+            0
+        };
 
         // Check for hard break
         if kind == SegmentKind::HardBreak {
             let line = LayoutLineRange {
                 width: compute_paint_width_from(data, &start, i),
                 start,
-                end: LayoutCursor {
-                    segment_index: i + 1,
-                    grapheme_index: 0,
-                },
+                end: LayoutCursor::new(i + 1, 0),
+                ends_with_discretionary_hyphen: false,
             };
-            return Some((
-                line,
-                LayoutCursor {
-                    segment_index: i + 1,
-                    grapheme_index: 0,
-                },
-            ));
+            return Some((line, LayoutCursor::new(i + 1, 0)));
         }
 
-        let width = if kind == SegmentKind::Tab {
-            get_tab_advance(line_w, data.tab_stop_advance)
-        } else {
-            data.widths[i]
-        };
-
-        let new_w = line_w + width;
-
-        if kind.can_break_after() {
-            pending = Some(PendingBreak {
-                segment_index: i + 1,
-                grapheme_index: 0,
-                fit_width: line_w + data.line_end_fit_advances[i],
-                paint_width: line_w + data.line_end_paint_advances[i],
-            });
-            line_w = new_w;
+        if kind == SegmentKind::Glue {
+            line_w += remaining_segment_width(segment, segment_start_grapheme);
             has_content = true;
             i += 1;
             continue;
         }
 
+        let width = if kind == SegmentKind::Tab {
+            get_tab_advance(line_w, data.tab_stop_advance)
+        } else {
+            remaining_segment_width(segment, segment_start_grapheme)
+        };
+
+        let new_w = line_w + width;
+
+        if kind.can_break_after() {
+            let content_after = has_content || is_visible_line_content(kind);
+            let fit_width = line_w + segment.line_end_fit_advance;
+            if content_after && fit_width <= max_width + epsilon {
+                pending = Some(PendingBreak {
+                    segment_index: i + 1,
+                    grapheme_index: 0,
+                    fit_width,
+                    paint_width: line_w + segment.line_end_paint_advance,
+                    ends_with_discretionary_hyphen: kind == SegmentKind::SoftHyphen,
+                });
+            }
+            line_w = new_w;
+            has_content = content_after;
+            i += 1;
+            continue;
+        }
+
         // Text -- check overflow
-        if new_w > max_width + epsilon && has_content {
+        if new_w > max_width + epsilon {
             // Try pending break
-            if let Some(pb) = pending.take()
+            if has_content
+                && let Some(pb) = pending.take()
                 && pb.fit_width <= max_width + epsilon
             {
                 let line = LayoutLineRange {
                     width: pb.paint_width,
                     start,
-                    end: LayoutCursor {
-                        segment_index: pb.segment_index,
-                        grapheme_index: 0,
-                    },
+                    end: LayoutCursor::new(pb.segment_index, 0),
+                    ends_with_discretionary_hyphen: pb.ends_with_discretionary_hyphen,
                 };
                 let next_start_seg = skip_leading_spaces(data, pb.segment_index, seg_count);
-                return Some((
-                    line,
-                    LayoutCursor {
-                        segment_index: next_start_seg,
-                        grapheme_index: 0,
-                    },
-                ));
+                return Some((line, LayoutCursor::new(next_start_seg, 0)));
             }
 
-            // Try grapheme break
-            if let Some(ref bw) = data.breakable_widths[i] {
-                let mut accum = line_w;
-                let mut break_at = 0;
-                for (gi, gw) in bw.iter().enumerate() {
-                    if accum + gw > max_width + epsilon && gi > 0 {
-                        break;
-                    }
-                    accum += gw;
-                    break_at = gi + 1;
-                }
-                if break_at > 0 && break_at < bw.len() {
-                    let break_width: f64 = bw[..break_at].iter().sum();
-                    let line = LayoutLineRange {
-                        width: line_w + break_width,
-                        start,
-                        end: LayoutCursor {
-                            segment_index: i,
-                            grapheme_index: break_at,
-                        },
-                    };
-                    return Some((
-                        line,
-                        LayoutCursor {
-                            segment_index: i,
-                            grapheme_index: break_at,
-                        },
-                    ));
-                }
+            let glued_to_previous = i > start.segment_index
+                && segment_at(data, i.saturating_sub(1))
+                    .is_some_and(|previous| previous.kind == SegmentKind::Glue);
+
+            // Try grapheme break unless this text is attached to the
+            // preceding run by non-breaking glue.
+            if !glued_to_previous
+                && let Some(bw) = segment.breakable_widths
+                && let Some((break_at, break_width)) = find_grapheme_break(
+                    bw,
+                    segment_start_grapheme,
+                    line_w,
+                    max_width,
+                    epsilon,
+                    !has_content,
+                )
+            {
+                let line = LayoutLineRange {
+                    width: line_w + break_width,
+                    start,
+                    end: LayoutCursor::new(i, break_at),
+                    ends_with_discretionary_hyphen: false,
+                };
+                return Some((line, LayoutCursor::new(i, break_at)));
+            }
+
+            // No part of this segment fits after existing content. Leave it
+            // untouched for the next call so that a breakable segment can be
+            // split repeatedly from a fresh line.
+            if !glued_to_previous && has_content && start.segment_index < i {
+                let end = LayoutCursor::new(i, 0);
+                let line = LayoutLineRange {
+                    width: compute_paint_width_from(data, &start, i),
+                    start,
+                    end,
+                    ends_with_discretionary_hyphen: false,
+                };
+                return Some((line, end));
             }
         }
 
@@ -676,15 +709,10 @@ pub fn layout_next_line_range(
         LayoutLineRange {
             width: compute_paint_width_from(data, &start, seg_count),
             start,
-            end: LayoutCursor {
-                segment_index: seg_count,
-                grapheme_index: 0,
-            },
+            end: LayoutCursor::new(seg_count, 0),
+            ends_with_discretionary_hyphen: false,
         },
-        LayoutCursor {
-            segment_index: seg_count,
-            grapheme_index: 0,
-        },
+        LayoutCursor::new(seg_count, 0),
     ))
 }
 
@@ -693,78 +721,183 @@ pub fn layout_next_line_range(
 /// Compute tab advance to the next tab stop.
 #[inline]
 fn get_tab_advance(current_x: f64, tab_stop_advance: f64) -> f64 {
-    if tab_stop_advance <= 0.0 {
+    if !tab_stop_advance.is_finite() || tab_stop_advance <= 0.0 || !current_x.is_finite() {
         return 0.0;
     }
     tab_stop_advance - (current_x % tab_stop_advance)
 }
 
-/// Check if we can break before a given segment (previous segment allows it).
-#[inline]
-fn can_break_before(data: &PreparedData, index: usize) -> bool {
-    if index == 0 {
-        return false;
+/// Clamp a crate-internal cursor to the prepared representation.
+fn normalize_cursor(data: &PreparedData, cursor: LayoutCursor) -> LayoutCursor {
+    let seg_count = data.segment_count();
+    if cursor.segment_index >= seg_count {
+        return LayoutCursor::new(seg_count, 0);
     }
-    data.kinds[index - 1].can_break_after()
+
+    let grapheme_index = segment_at(data, cursor.segment_index)
+        .and_then(|segment| segment.breakable_widths)
+        .map_or(0, |widths| cursor.grapheme_index.min(widths.len()));
+    LayoutCursor::new(cursor.segment_index, grapheme_index)
+}
+
+/// Sum a clamped slice without relying on a panicking range operation.
+fn sum_slice(values: &[f64], from: usize, to: usize) -> f64 {
+    let start = from.min(values.len());
+    let end = to.clamp(start, values.len());
+    values
+        .get(start..end)
+        .map_or(0.0, |slice| slice.iter().sum())
+}
+
+/// Preserve whole-segment shaping and kerning until a cursor actually enters
+/// the segment. Per-grapheme measurements are only an overflow-wrap fallback;
+/// their sum is not a substitute for the backend's shaped segment width.
+fn remaining_segment_width(segment: SegmentView<'_>, start_grapheme: usize) -> f64 {
+    if start_grapheme == 0 {
+        segment.width
+    } else {
+        segment.breakable_widths.map_or(segment.width, |widths| {
+            sum_slice(widths, start_grapheme, widths.len())
+        })
+    }
 }
 
 /// Skip leading space segments after a break.
 fn skip_leading_spaces(data: &PreparedData, from: usize, limit: usize) -> usize {
-    let mut i = from;
-    while i < limit && data.kinds[i] == SegmentKind::Space {
+    let end = limit.min(data.segment_count());
+    let mut i = from.min(end);
+    while i < end && segment_at(data, i).is_some_and(|segment| segment.kind == SegmentKind::Space) {
         i += 1;
     }
     i
 }
 
-/// Recompute line width from segment `from` to segment `to` (exclusive).
-fn recompute_line_width(data: &PreparedData, from: usize, to: usize) -> f64 {
-    data.widths[from..to].iter().sum()
+/// Reconstruct the active line after selecting an earlier break opportunity.
+///
+/// Width replay must preserve dynamic tab stops, while content replay must not
+/// mistake structural controls such as ZWSP or U+00AD for paintable content.
+fn replay_line_state(
+    data: &PreparedData,
+    from: usize,
+    to: usize,
+    max_width: f64,
+    epsilon: f64,
+) -> (f64, bool, Option<PendingBreak>) {
+    let end = to.min(data.segment_count());
+    let mut width = 0.0;
+    let mut has_content = false;
+    let mut pending = None;
+    for index in from.min(end)..end {
+        let Some(segment) = segment_at(data, index) else {
+            continue;
+        };
+        let advance = if segment.kind == SegmentKind::Tab {
+            get_tab_advance(width, data.tab_stop_advance)
+        } else {
+            segment.width
+        };
+        let content_after = has_content || is_visible_line_content(segment.kind);
+        if segment.kind.can_break_after() {
+            let fit_width = width + segment.line_end_fit_advance;
+            if content_after && fit_width <= max_width + epsilon {
+                pending = Some(PendingBreak {
+                    segment_index: index + 1,
+                    grapheme_index: 0,
+                    fit_width,
+                    paint_width: width + segment.line_end_paint_advance,
+                    ends_with_discretionary_hyphen: segment.kind == SegmentKind::SoftHyphen,
+                });
+            }
+        }
+        width += advance;
+        has_content = content_after;
+    }
+    (width, has_content, pending)
 }
 
-/// Compute paint width (excludes trailing space) from segment `from` to `to`.
-fn compute_paint_width(data: &PreparedData, from: usize, to: usize) -> f64 {
-    let mut w: f64 = data.widths[from..to].iter().sum();
-    // Subtract trailing spaces
-    let mut i = to;
-    while i > from {
-        i -= 1;
-        if data.kinds[i].hangs_at_line_end() {
-            w -= data.widths[i];
-        } else {
-            break;
-        }
+/// Structural controls may alter where a line can break but do not make an
+/// otherwise empty line eligible for emission.
+const fn is_visible_line_content(kind: SegmentKind) -> bool {
+    !matches!(
+        kind,
+        SegmentKind::ZeroWidthBreak | SegmentKind::SoftHyphen | SegmentKind::HardBreak
+    )
+}
+
+/// Compute paint width between two cursor positions.
+///
+/// Segment indices use cursor semantics: a zero grapheme index is the
+/// boundary before that segment, while a non-zero grapheme index identifies a
+/// boundary within the segment. This lets repeated mid-word lines retain both
+/// their partial starting offset and their partial ending offset.
+fn compute_paint_width_range(
+    data: &PreparedData,
+    start_segment: usize,
+    start_grapheme: usize,
+    end_segment: usize,
+    end_grapheme: usize,
+) -> f64 {
+    let seg_count = data.segment_count();
+    let start_segment = start_segment.min(seg_count);
+    let end_segment = end_segment.min(seg_count);
+
+    if start_segment > end_segment
+        || (start_segment == end_segment && end_grapheme <= start_grapheme)
+    {
+        return 0.0;
     }
-    w
+
+    if start_segment == end_segment {
+        return segment_at(data, start_segment)
+            .and_then(|segment| segment.breakable_widths)
+            .map_or(0.0, |widths| {
+                sum_slice(widths, start_grapheme, end_grapheme)
+            });
+    }
+
+    let mut width = 0.0;
+    let mut paint_width = 0.0;
+    for index in start_segment..end_segment {
+        let Some(segment) = segment_at(data, index) else {
+            continue;
+        };
+        let advance = if index == start_segment && start_grapheme > 0 {
+            segment.breakable_widths.map_or(0.0, |widths| {
+                sum_slice(widths, start_grapheme, widths.len())
+            })
+        } else if segment.kind == SegmentKind::Tab {
+            get_tab_advance(width, data.tab_stop_advance)
+        } else {
+            segment.width
+        };
+        let line_end_advance = if index == start_segment && start_grapheme > 0 {
+            advance
+        } else if segment.kind == SegmentKind::SoftHyphen {
+            // U+00AD contributes paint width only when a PendingBreak carrying
+            // explicit discretionary-hyphen state is actually selected.
+            0.0
+        } else {
+            segment.line_end_paint_advance
+        };
+        paint_width = width + line_end_advance;
+        width += advance;
+    }
+
+    if end_grapheme > 0 {
+        if let Some(widths) =
+            segment_at(data, end_segment).and_then(|segment| segment.breakable_widths)
+        {
+            width += sum_slice(widths, 0, end_grapheme);
+        }
+        return width;
+    }
+    paint_width
 }
 
 /// Compute paint width accounting for cursor start position.
 fn compute_paint_width_from(data: &PreparedData, start: &LayoutCursor, to: usize) -> f64 {
-    let mut w = 0.0;
-    let from = start.segment_index;
-
-    for i in from..to {
-        if i == from && start.grapheme_index > 0 {
-            // Partial first segment
-            if let Some(ref bw) = data.breakable_widths[i] {
-                w += bw[start.grapheme_index..].iter().sum::<f64>();
-            }
-        } else {
-            w += data.widths[i];
-        }
-    }
-
-    // Subtract trailing spaces
-    let mut i = to;
-    while i > from {
-        i -= 1;
-        if data.kinds[i].hangs_at_line_end() {
-            w -= data.widths[i];
-        } else {
-            break;
-        }
-    }
-    w
+    let cursor = normalize_cursor(data, *start);
+    compute_paint_width_range(data, cursor.segment_index, cursor.grapheme_index, to, 0)
 }
 
 /// Find the grapheme index at which to break a segment for overflow-wrap.
@@ -774,54 +907,51 @@ fn compute_paint_width_from(data: &PreparedData, start: &LayoutCursor, to: usize
 #[inline]
 fn find_grapheme_break(
     grapheme_widths: &[f64],
+    start_grapheme: usize,
     line_w: f64,
     max_width: f64,
     epsilon: f64,
-) -> Option<usize> {
+    allow_first_overflow: bool,
+) -> Option<(usize, f64)> {
+    let start = start_grapheme.min(grapheme_widths.len());
     let mut accum = line_w;
-    let mut break_at = 0;
-    for (gi, &gw) in grapheme_widths.iter().enumerate() {
-        if accum + gw > max_width + epsilon && gi > 0 {
-            return Some(break_at);
+    let mut break_at = start;
+    for (gi, &gw) in grapheme_widths.iter().enumerate().skip(start) {
+        if accum + gw > max_width + epsilon {
+            if break_at > start {
+                break;
+            }
+            if !allow_first_overflow {
+                return None;
+            }
         }
         accum += gw;
         break_at = gi + 1;
+        if accum > max_width + epsilon {
+            break;
+        }
     }
-    if break_at > 0 && break_at < grapheme_widths.len() {
-        Some(break_at)
+    if break_at > start && break_at < grapheme_widths.len() {
+        Some((break_at, sum_slice(grapheme_widths, start, break_at)))
     } else {
         None
     }
 }
 
-/// Break within a segment's grapheme widths.
-///
-/// Returns `(extra_line_count, remaining_width)`.
-fn break_within_segment(
-    grapheme_widths: &[f64],
-    initial_width: f64,
-    max_width: f64,
-    epsilon: f64,
-) -> (usize, f64) {
-    let mut lines = 0;
-    let mut line_w = initial_width;
-
-    for &gw in grapheme_widths {
-        if line_w + gw > max_width + epsilon && line_w > 0.0 {
-            lines += 1;
-            line_w = gw;
-        } else {
-            line_w += gw;
-        }
-    }
-
-    (lines, line_w)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::backend::{FontSpec, fixed::FixedWidthBackend};
     use crate::types::PreparedLineChunk;
+    use crate::{
+        Result, layout, layout_next_line, layout_with_lines, prepare, prepare_with_segments,
+        walk_line_ranges,
+    };
+
+    #[track_caller]
+    fn valid<T>(result: Result<T>) -> T {
+        result.expect("test input is valid")
+    }
 
     fn make_simple_data(widths: &[f64], kinds: &[SegmentKind]) -> PreparedData {
         let n = widths.len();
@@ -854,7 +984,99 @@ mod tests {
             tab_stop_advance: 48.0,
             discretionary_hyphen_width: 5.0,
             simple_fast_path: true,
+            profile: EngineProfile::native(),
         }
+    }
+
+    fn make_breakable_word_data(grapheme_count: usize, grapheme_width: f64) -> PreparedData {
+        let total_width = (0..grapheme_count).fold(0.0, |width, _| width + grapheme_width);
+        let mut data = make_simple_data(&[total_width], &[SegmentKind::Text]);
+        data.breakable_widths = vec![Some(vec![grapheme_width; grapheme_count])];
+        data
+    }
+
+    fn line_signature(line: &InternalLine) -> (usize, usize, usize, usize, f64) {
+        (
+            line.start_segment,
+            line.start_grapheme,
+            line.end_segment,
+            line.end_grapheme,
+            line.width,
+        )
+    }
+
+    fn range_signature(line: &LayoutLineRange) -> (usize, usize, usize, usize, f64) {
+        (
+            line.start.segment_index,
+            line.start.grapheme_index,
+            line.end.segment_index,
+            line.end.grapheme_index,
+            line.width,
+        )
+    }
+
+    fn line_state_signature(line: &InternalLine) -> (usize, usize, usize, usize, f64, bool) {
+        (
+            line.start_segment,
+            line.start_grapheme,
+            line.end_segment,
+            line.end_grapheme,
+            line.width,
+            line.ends_with_discretionary_hyphen,
+        )
+    }
+
+    fn range_state_signature(line: &LayoutLineRange) -> (usize, usize, usize, usize, f64, bool) {
+        (
+            line.start.segment_index,
+            line.start.grapheme_index,
+            line.end.segment_index,
+            line.end.grapheme_index,
+            line.width,
+            line.ends_with_discretionary_hyphen,
+        )
+    }
+
+    fn make_control_data(kinds: &[SegmentKind]) -> PreparedData {
+        let widths: Vec<_> = kinds
+            .iter()
+            .map(|kind| match kind {
+                SegmentKind::Text | SegmentKind::Glue => 3.0,
+                SegmentKind::Space | SegmentKind::PreservedSpace => 1.0,
+                SegmentKind::ZeroWidthBreak
+                | SegmentKind::SoftHyphen
+                | SegmentKind::HardBreak
+                | SegmentKind::Tab => 0.0,
+            })
+            .collect();
+        let mut data = make_simple_data(&widths, kinds);
+        data.discretionary_hyphen_width = 2.0;
+        data.tab_stop_advance = 4.0;
+        for (index, kind) in kinds.iter().enumerate() {
+            if *kind == SegmentKind::SoftHyphen {
+                if let Some(advance) = data.line_end_fit_advances.get_mut(index) {
+                    *advance = data.discretionary_hyphen_width;
+                }
+                if let Some(advance) = data.line_end_paint_advances.get_mut(index) {
+                    *advance = data.discretionary_hyphen_width;
+                }
+            }
+        }
+        data.simple_fast_path = false;
+        data
+    }
+
+    fn collect_streaming_lines(data: &PreparedData, max_width: f64) -> Vec<LayoutLineRange> {
+        let mut cursor = LayoutCursor::default();
+        let mut lines = Vec::new();
+        while let Some((line, next)) =
+            layout_next_line_range(data, cursor, max_width, &data.profile)
+        {
+            assert_ne!(next, cursor, "streaming cursor must always make progress");
+            lines.push(line);
+            cursor = next;
+        }
+        lines
     }
 
     #[test]
@@ -924,6 +1146,624 @@ mod tests {
     }
 
     #[test]
+    fn simple_walker_repeatedly_splits_one_long_segment() {
+        let data = make_breakable_word_data(20, 6.0);
+        let mut lines = Vec::new();
+
+        walk_lines_simple(&data, 18.0, &data.profile, |line| lines.push(line));
+
+        let signatures: Vec<_> = lines.iter().map(line_signature).collect();
+        assert_eq!(count_lines_simple(&data, 18.0, &data.profile), 7);
+        assert_eq!(
+            signatures,
+            vec![
+                (0, 0, 0, 3, 18.0),
+                (0, 3, 0, 6, 18.0),
+                (0, 6, 0, 9, 18.0),
+                (0, 9, 0, 12, 18.0),
+                (0, 12, 0, 15, 18.0),
+                (0, 15, 0, 18, 18.0),
+                (0, 18, 1, 0, 12.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn full_walker_repeatedly_splits_one_long_segment() {
+        let mut data = make_breakable_word_data(20, 6.0);
+        data.simple_fast_path = false;
+        let mut lines = Vec::new();
+
+        walk_lines_full(&data, 18.0, &data.profile, |line| lines.push(line));
+
+        let signatures: Vec<_> = lines.iter().map(line_signature).collect();
+        assert_eq!(count_lines_full(&data, 18.0, &data.profile), 7);
+        assert_eq!(
+            signatures,
+            vec![
+                (0, 0, 0, 3, 18.0),
+                (0, 3, 0, 6, 18.0),
+                (0, 6, 0, 9, 18.0),
+                (0, 9, 0, 12, 18.0),
+                (0, 12, 0, 15, 18.0),
+                (0, 15, 0, 18, 18.0),
+                (0, 18, 1, 0, 12.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn whole_segment_measurement_preserves_shaping_until_midword_break() {
+        let mut data = make_simple_data(&[10.0], &[SegmentKind::Text]);
+        // Isolated grapheme measurements deliberately exceed the shaped
+        // whole-segment width, as with kerning pairs such as "AV".
+        data.breakable_widths = vec![Some(vec![6.0, 6.0])];
+
+        let mut simple = Vec::new();
+        walk_lines_simple(&data, 11.0, &data.profile, |line| simple.push(line));
+        let streamed = collect_streaming_lines(&data, 11.0);
+
+        assert_eq!(
+            simple.iter().map(line_signature).collect::<Vec<_>>(),
+            vec![(0, 0, 1, 0, 10.0)]
+        );
+        assert_eq!(
+            simple.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+
+        data.simple_fast_path = false;
+        let mut full = Vec::new();
+        walk_lines_full(&data, 11.0, &data.profile, |line| full.push(line));
+        assert_eq!(
+            full.iter().map(line_signature).collect::<Vec<_>>(),
+            vec![(0, 0, 1, 0, 10.0)]
+        );
+    }
+
+    #[test]
+    fn glue_never_becomes_a_break_boundary() {
+        let mut data = make_simple_data(
+            &[6.0, 6.0, 6.0],
+            &[SegmentKind::Text, SegmentKind::Glue, SegmentKind::Text],
+        );
+        data.breakable_widths = vec![None, None, Some(vec![6.0])];
+        data.simple_fast_path = false;
+
+        let mut walked = Vec::new();
+        walk_lines_full(&data, 12.0, &data.profile, |line| walked.push(line));
+        let streamed = collect_streaming_lines(&data, 12.0);
+
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            vec![(0, 0, 3, 0, 18.0)]
+        );
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn leading_zero_width_break_never_emits_an_empty_line() {
+        let mut data = make_simple_data(
+            &[0.0, 60.0],
+            &[SegmentKind::ZeroWidthBreak, SegmentKind::Text],
+        );
+        data.breakable_widths = vec![None, Some(vec![6.0; 10])];
+
+        let mut simple = Vec::new();
+        walk_lines_simple(&data, 18.0, &data.profile, |line| simple.push(line));
+        let streamed = collect_streaming_lines(&data, 18.0);
+
+        assert_eq!(simple.len(), 4);
+        assert_eq!(simple[0].width, 18.0);
+        assert_eq!(simple[0].start_segment, 0);
+        assert_eq!(simple[0].end_segment, 1);
+        assert_eq!(simple[0].end_grapheme, 3);
+        assert_eq!(
+            simple.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+
+        data.simple_fast_path = false;
+        let mut full = Vec::new();
+        walk_lines_full(&data, 18.0, &data.profile, |line| full.push(line));
+        assert_eq!(
+            simple.iter().map(line_signature).collect::<Vec<_>>(),
+            full.iter().map(line_signature).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn non_fitting_soft_hyphen_preserves_the_earlier_fitting_break() {
+        for final_is_breakable in [false, true] {
+            let mut data = make_control_data(&[
+                SegmentKind::Text,
+                SegmentKind::Space,
+                SegmentKind::SoftHyphen,
+                SegmentKind::Text,
+            ]);
+            if final_is_breakable {
+                data.breakable_widths[3] = Some(vec![3.0]);
+            }
+            let mut walked = Vec::new();
+            walk_lines_full(&data, 5.0, &data.profile, |line| walked.push(line));
+            let streamed = collect_streaming_lines(&data, 5.0);
+
+            assert_eq!(walked.len(), 2);
+            assert_eq!(walked[0].end_segment, 2);
+            assert_eq!(walked[1].start_segment, 2);
+            assert_eq!(walked[1].width, 3.0);
+            assert!(
+                walked
+                    .iter()
+                    .all(|line| !line.ends_with_discretionary_hyphen)
+            );
+            assert_eq!(
+                walked.iter().map(line_state_signature).collect::<Vec<_>>(),
+                streamed
+                    .iter()
+                    .map(range_state_signature)
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn production_preparation_preserves_control_run_parity() {
+        let backend =
+            valid(valid(FixedWidthBackend::new().with_char_width(0.3)).with_cjk_width(0.3));
+        let font = valid(FontSpec::new("10px monospace"));
+
+        for text in ["\u{200B}abcdefghij", "a \u{00AD}a", "a \u{00AD}\u{4E2D}"] {
+            let prepared = valid(prepare(
+                text,
+                &font,
+                &backend,
+                crate::PrepareOptions::default(),
+            ));
+            let rich = valid(prepare_with_segments(
+                text,
+                &font,
+                &backend,
+                crate::PrepareOptions::default(),
+            ));
+            let rich_lines = valid(layout_with_lines(&rich, 5.0));
+            let summary = valid(layout(&prepared, 5.0, 10.0));
+
+            let mut walked = Vec::new();
+            valid(walk_line_ranges(
+                &prepared,
+                5.0,
+                &prepared.data.profile,
+                |line| walked.push(line),
+            ));
+
+            let mut streamed = Vec::new();
+            let mut cursor = LayoutCursor::default();
+            while let Some((line, next)) = valid(layout_next_line(&prepared, cursor, 5.0)) {
+                assert_ne!(next, cursor, "streaming cursor must advance for {text:?}");
+                streamed.push(line);
+                cursor = next;
+            }
+
+            assert_eq!(summary.line_count, rich_lines.len(), "count/rich: {text:?}");
+            assert_eq!(walked.len(), rich_lines.len(), "walk/rich: {text:?}");
+            assert_eq!(streamed.len(), rich_lines.len(), "stream/rich: {text:?}");
+            assert!(
+                rich_lines.iter().all(|line| line.width > 0.0),
+                "structural controls emitted an empty line for {text:?}"
+            );
+            assert!(
+                rich_lines
+                    .iter()
+                    .all(|line| !line.ends_with_discretionary_hyphen),
+                "a non-fitting soft hyphen replaced an earlier fitting break for {text:?}"
+            );
+            assert_eq!(
+                walked.iter().map(range_state_signature).collect::<Vec<_>>(),
+                streamed
+                    .iter()
+                    .map(range_state_signature)
+                    .collect::<Vec<_>>(),
+                "walk/stream state mismatch for {text:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn selected_soft_hyphen_state_has_full_and_streaming_parity() {
+        let data = make_control_data(&[
+            SegmentKind::Text,
+            SegmentKind::SoftHyphen,
+            SegmentKind::Text,
+        ]);
+        let mut walked = Vec::new();
+        walk_lines_full(&data, 5.0, &data.profile, |line| walked.push(line));
+        let streamed = collect_streaming_lines(&data, 5.0);
+
+        assert_eq!(walked.len(), 2);
+        assert_eq!(walked[0].width, 5.0);
+        assert!(walked[0].ends_with_discretionary_hyphen);
+        assert!(!walked[1].ends_with_discretionary_hyphen);
+        assert_eq!(
+            walked.iter().map(line_state_signature).collect::<Vec<_>>(),
+            streamed
+                .iter()
+                .map(range_state_signature)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn short_mixed_control_runs_have_cross_surface_parity() {
+        const KINDS: [SegmentKind; 5] = [
+            SegmentKind::Text,
+            SegmentKind::Space,
+            SegmentKind::ZeroWidthBreak,
+            SegmentKind::SoftHyphen,
+            SegmentKind::Tab,
+        ];
+
+        for length in 0..=4 {
+            let case_count = (0..length).fold(1_usize, |count, _| count * KINDS.len());
+            for encoded in 0..case_count {
+                let mut value = encoded;
+                let mut kinds = Vec::with_capacity(length);
+                for _ in 0..length {
+                    if let Some(kind) = KINDS.get(value % KINDS.len()) {
+                        kinds.push(*kind);
+                    }
+                    value /= KINDS.len();
+                }
+
+                let data = make_control_data(&kinds);
+                for max_width in [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, f64::INFINITY] {
+                    let mut full = Vec::new();
+                    walk_lines_full(&data, max_width, &data.profile, |line| full.push(line));
+                    let streamed = collect_streaming_lines(&data, max_width);
+
+                    assert_eq!(
+                        count_lines_full(&data, max_width, &data.profile),
+                        full.len(),
+                        "full count mismatch for {kinds:?} at {max_width}"
+                    );
+                    assert_eq!(
+                        full.iter().map(line_state_signature).collect::<Vec<_>>(),
+                        streamed
+                            .iter()
+                            .map(range_state_signature)
+                            .collect::<Vec<_>>(),
+                        "full/stream mismatch for {kinds:?} at {max_width}"
+                    );
+
+                    if kinds.iter().all(|kind| {
+                        matches!(
+                            kind,
+                            SegmentKind::Text | SegmentKind::Space | SegmentKind::ZeroWidthBreak
+                        )
+                    }) {
+                        let mut simple = Vec::new();
+                        walk_lines_simple(&data, max_width, &data.profile, |line| {
+                            simple.push(line);
+                        });
+                        assert_eq!(
+                            count_lines_simple(&data, max_width, &data.profile),
+                            simple.len(),
+                            "simple count mismatch for {kinds:?} at {max_width}"
+                        );
+                        assert_eq!(
+                            simple.iter().map(line_state_signature).collect::<Vec<_>>(),
+                            streamed
+                                .iter()
+                                .map(range_state_signature)
+                                .collect::<Vec<_>>(),
+                            "simple/stream mismatch for {kinds:?} at {max_width}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn streaming_repeatedly_advances_through_one_long_segment() {
+        let data = make_breakable_word_data(20, 6.0);
+        let mut cursor = LayoutCursor::default();
+        let mut signatures = Vec::new();
+
+        while let Some((line, next)) = layout_next_line_range(&data, cursor, 18.0, &data.profile) {
+            signatures.push((
+                line.start.segment_index,
+                line.start.grapheme_index,
+                line.end.segment_index,
+                line.end.grapheme_index,
+                line.width,
+            ));
+            assert_ne!(next, cursor, "streaming cursor must always make progress");
+            cursor = next;
+        }
+
+        assert_eq!(
+            signatures,
+            vec![
+                (0, 0, 0, 3, 18.0),
+                (0, 3, 0, 6, 18.0),
+                (0, 6, 0, 9, 18.0),
+                (0, 9, 0, 12, 18.0),
+                (0, 12, 0, 15, 18.0),
+                (0, 15, 0, 18, 18.0),
+                (0, 18, 1, 0, 12.0),
+            ]
+        );
+        assert_eq!(cursor, LayoutCursor::new(1, 0));
+    }
+
+    #[test]
+    fn mid_word_break_makes_progress_when_one_grapheme_exceeds_the_line() {
+        let data = make_breakable_word_data(5, 6.0);
+        let mut lines = Vec::new();
+
+        walk_lines_simple(&data, 5.0, &data.profile, |line| lines.push(line));
+
+        assert_eq!(lines.len(), 5);
+        assert!(
+            lines
+                .iter()
+                .all(|line| (line.width - 6.0).abs() < f64::EPSILON)
+        );
+        assert_eq!(lines.last().map(line_signature), Some((0, 4, 1, 0, 6.0)));
+    }
+
+    #[test]
+    fn cjk_like_segments_have_count_walk_and_streaming_parity() {
+        let data = make_simple_data(
+            &[10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0],
+            &[SegmentKind::Text; 8],
+        );
+        let mut walked = Vec::new();
+        walk_lines_simple(&data, 30.0, &data.profile, |line| walked.push(line));
+        let streamed = collect_streaming_lines(&data, 30.0);
+
+        assert_eq!(count_lines_simple(&data, 30.0, &data.profile), 3);
+        assert_eq!(walked.len(), streamed.len());
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            streamed.iter().map(|line| line.width).collect::<Vec<_>>(),
+            vec![30.0, 30.0, 20.0]
+        );
+    }
+
+    #[test]
+    fn zero_width_word_sequence_has_count_walk_and_streaming_parity() {
+        let data = make_simple_data(
+            &[6.0, 2.5, 6.0, 2.5, 6.0, 2.5, 6.0, 2.5, 6.0, 2.5, 6.0],
+            &[
+                SegmentKind::Text,
+                SegmentKind::Space,
+                SegmentKind::Text,
+                SegmentKind::Space,
+                SegmentKind::Text,
+                SegmentKind::Space,
+                SegmentKind::Text,
+                SegmentKind::Space,
+                SegmentKind::Text,
+                SegmentKind::Space,
+                SegmentKind::Text,
+            ],
+        );
+        let mut walked = Vec::new();
+        walk_lines_simple(&data, 0.0, &data.profile, |line| walked.push(line));
+        let streamed = collect_streaming_lines(&data, 0.0);
+
+        assert_eq!(count_lines_simple(&data, 0.0, &data.profile), 6);
+        assert_eq!(walked.len(), streamed.len());
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+        assert!(
+            streamed
+                .iter()
+                .all(|line| (line.width - 6.0).abs() < f64::EPSILON)
+        );
+    }
+
+    #[test]
+    fn pending_space_does_not_prevent_repeated_word_splitting() {
+        let mut data = make_simple_data(
+            &[30.0, 2.5, 30.0],
+            &[SegmentKind::Text, SegmentKind::Space, SegmentKind::Text],
+        );
+        data.breakable_widths = vec![Some(vec![6.0; 5]), None, Some(vec![6.0; 5])];
+
+        for (max_width, expected_count) in [(18.0, 4), (0.0, 10)] {
+            let mut walked = Vec::new();
+            walk_lines_simple(&data, max_width, &data.profile, |line| walked.push(line));
+            let streamed = collect_streaming_lines(&data, max_width);
+
+            assert_eq!(
+                count_lines_simple(&data, max_width, &data.profile),
+                expected_count
+            );
+            assert_eq!(walked.len(), streamed.len());
+            assert_eq!(
+                walked.iter().map(line_signature).collect::<Vec<_>>(),
+                streamed.iter().map(range_signature).collect::<Vec<_>>()
+            );
+        }
+    }
+
+    #[test]
+    fn trailing_hard_break_has_full_walk_and_streaming_parity() {
+        let mut data = make_simple_data(
+            &[6.0, 0.0, 6.0, 0.0],
+            &[
+                SegmentKind::Text,
+                SegmentKind::HardBreak,
+                SegmentKind::Text,
+                SegmentKind::HardBreak,
+            ],
+        );
+        data.simple_fast_path = false;
+        data.chunks = vec![
+            PreparedLineChunk {
+                start_segment_index: 0,
+                end_segment_index: 1,
+                consumed_end_segment_index: 2,
+            },
+            PreparedLineChunk {
+                start_segment_index: 2,
+                end_segment_index: 3,
+                consumed_end_segment_index: 4,
+            },
+            PreparedLineChunk {
+                start_segment_index: 4,
+                end_segment_index: 4,
+                consumed_end_segment_index: 4,
+            },
+        ];
+        let mut walked = Vec::new();
+        walk_lines_full(&data, 100.0, &data.profile, |line| walked.push(line));
+        let streamed = collect_streaming_lines(&data, 100.0);
+
+        assert_eq!(count_lines_full(&data, 100.0, &data.profile), 3);
+        assert_eq!(walked.len(), streamed.len());
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            streamed.iter().map(|line| line.width).collect::<Vec<_>>(),
+            vec![6.0, 6.0, 0.0]
+        );
+    }
+
+    #[test]
+    fn tab_advance_is_replayed_for_full_walk_and_streaming_widths() {
+        let mut data = make_simple_data(
+            &[6.0, 0.0, 6.0],
+            &[SegmentKind::Text, SegmentKind::Tab, SegmentKind::Text],
+        );
+        data.simple_fast_path = false;
+        data.tab_stop_advance = 20.0;
+        let mut walked = Vec::new();
+        walk_lines_full(&data, f64::INFINITY, &data.profile, |line| {
+            walked.push(line);
+        });
+        let streamed = collect_streaming_lines(&data, f64::INFINITY);
+
+        assert_eq!(count_lines_full(&data, f64::INFINITY, &data.profile), 1);
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            vec![(0, 0, 3, 0, 26.0)]
+        );
+        assert_eq!(
+            walked.iter().map(line_signature).collect::<Vec<_>>(),
+            streamed.iter().map(range_signature).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn public_tab_geometry_reports_the_dynamic_advance_on_every_surface() {
+        use crate::backend::{FontSpec, fixed::FixedWidthBackend};
+        use crate::types::{PrepareOptions, WhiteSpaceMode};
+
+        let backend = FixedWidthBackend::new();
+        let font = FontSpec::new("10px monospace").expect("test font is valid");
+        let options = PrepareOptions {
+            white_space: WhiteSpaceMode::PreWrap,
+            ..PrepareOptions::default()
+        };
+        let prepared = crate::prepare("a\tb", &font, &backend, options.clone())
+            .expect("test preparation succeeds");
+        let rich = crate::prepare_with_segments("a\tb", &font, &backend, options)
+            .expect("test preparation with segments succeeds");
+
+        assert_eq!(
+            crate::measure_natural_width(&prepared).expect("natural width succeeds"),
+            26.0
+        );
+        let materialized =
+            crate::layout_with_lines(&rich, f64::INFINITY).expect("materialized layout succeeds");
+        assert_eq!(materialized.first().map(|line| line.width), Some(26.0));
+        assert_eq!(
+            materialized.first().map(|line| line.text.as_str()),
+            Some("a\tb")
+        );
+
+        let streamed = crate::layout_next_line(&prepared, LayoutCursor::default(), f64::INFINITY)
+            .expect("streaming layout succeeds")
+            .expect("one line is available");
+        assert_eq!(streamed.0.width, 26.0);
+        assert_eq!(streamed.0.start, LayoutCursor::new(0, 0));
+        assert_eq!(streamed.0.end, LayoutCursor::new(3, 0));
+    }
+
+    #[test]
+    fn simple_count_walk_and_streaming_remain_in_lockstep_across_mixed_runs() {
+        const RADIX: usize = 4;
+        const SEGMENTS: usize = 4;
+        let case_count = RADIX.pow(SEGMENTS as u32);
+
+        for encoded in 0..case_count {
+            let mut value = encoded;
+            let mut widths = Vec::with_capacity(SEGMENTS);
+            let mut kinds = Vec::with_capacity(SEGMENTS);
+            let mut breakable_widths = Vec::with_capacity(SEGMENTS);
+            for _ in 0..SEGMENTS {
+                match value % RADIX {
+                    0 => {
+                        widths.push(6.0);
+                        kinds.push(SegmentKind::Text);
+                        breakable_widths.push(None);
+                    }
+                    1 => {
+                        widths.push(18.0);
+                        kinds.push(SegmentKind::Text);
+                        breakable_widths.push(Some(vec![6.0; 3]));
+                    }
+                    2 => {
+                        widths.push(2.5);
+                        kinds.push(SegmentKind::Space);
+                        breakable_widths.push(None);
+                    }
+                    _ => {
+                        widths.push(0.0);
+                        kinds.push(SegmentKind::ZeroWidthBreak);
+                        breakable_widths.push(None);
+                    }
+                }
+                value /= RADIX;
+            }
+
+            let mut data = make_simple_data(&widths, &kinds);
+            data.breakable_widths = breakable_widths;
+            for max_width in [0.0, 5.0, 6.0, 12.0, 18.0, 30.0, f64::INFINITY] {
+                let mut walked = Vec::new();
+                walk_lines_simple(&data, max_width, &data.profile, |line| walked.push(line));
+                let streamed = collect_streaming_lines(&data, max_width);
+                let walked_signatures = walked.iter().map(line_signature).collect::<Vec<_>>();
+                let streamed_signatures = streamed.iter().map(range_signature).collect::<Vec<_>>();
+
+                assert_eq!(
+                    count_lines_simple(&data, max_width, &data.profile),
+                    walked.len(),
+                    "count/walk mismatch for encoded case {encoded} at width {max_width}"
+                );
+                assert_eq!(
+                    walked_signatures, streamed_signatures,
+                    "walk/stream mismatch for encoded case {encoded} at width {max_width}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn test_tab_advance() {
         assert!((get_tab_advance(0.0, 48.0) - 48.0).abs() < 0.001);
         assert!((get_tab_advance(10.0, 48.0) - 38.0).abs() < 0.001);
@@ -950,5 +1790,50 @@ mod tests {
         let (line, next) = result.unwrap();
         assert_eq!(line.start.segment_index, 0);
         assert!(next.segment_index >= 2);
+    }
+
+    #[test]
+    fn drifted_parallel_arrays_are_bounded_by_shortest_array() {
+        let mut data = make_simple_data(&[30.0], &[SegmentKind::Text]);
+        data.kinds.clear();
+
+        assert_eq!(data.segment_count(), 0);
+        assert_eq!(count_lines_simple(&data, 50.0, &data.profile), 1);
+
+        let mut lines = Vec::new();
+        walk_lines_simple(&data, 50.0, &data.profile, |line| lines.push(line));
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].width, 0.0);
+    }
+
+    #[test]
+    fn streaming_cursor_clamps_drifted_grapheme_index() {
+        let mut data = make_simple_data(&[40.0], &[SegmentKind::Text]);
+        data.breakable_widths[0] = Some(vec![10.0, 10.0, 10.0, 10.0]);
+        let cursor = LayoutCursor::new(0, usize::MAX);
+
+        let result = layout_next_line_range(&data, cursor, f64::INFINITY, &data.profile);
+        assert!(result.is_some());
+        if let Some((line, next)) = result {
+            assert_eq!(line.start.grapheme_index(), 4);
+            assert_eq!(line.width, 0.0);
+            assert_eq!(next.segment_index(), 1);
+        }
+    }
+
+    #[test]
+    fn full_walker_clamps_drifted_chunk_bounds() {
+        let mut data = make_simple_data(&[40.0], &[SegmentKind::Text]);
+        data.chunks = vec![PreparedLineChunk {
+            start_segment_index: usize::MAX,
+            end_segment_index: usize::MAX,
+            consumed_end_segment_index: usize::MAX,
+        }];
+
+        let mut lines = Vec::new();
+        walk_lines_full(&data, 50.0, &data.profile, |line| lines.push(line));
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].start_segment, 1);
+        assert_eq!(lines[0].end_segment, 1);
     }
 }

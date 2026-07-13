@@ -242,7 +242,7 @@
       </div>
       <div class="stat">
         <div class="stat-value">0</div>
-        <div class="stat-label">allocations in hot path</div>
+        <div class="stat-label">backend calls in layout()</div>
       </div>
       <div class="stat">
         <div class="stat-value">2</div>
@@ -289,7 +289,7 @@
   <!-- Section 3: Inline Flow -->
   <section class="fade-in" style="animation-delay:0.45s">
     <h2>Inline Flow</h2>
-    <div class="subtitle">Atomic chips never break mid-token — text wraps around them</div>
+    <div class="subtitle"><strong style="color:var(--orange)">Illustrative JavaScript visualization.</strong> The Rust inline-flow API is covered by native tests but is not exported by this demo's WASM bindings.</div>
     <div class="slider-row">
       <label>width</label>
       <input type="range" id="inline-width-slider" min="120" max="600" value="360">
@@ -304,7 +304,7 @@
   <!-- Section 4: Streaming API -->
   <section class="fade-in" style="animation-delay:0.6s">
     <h2>Streaming API</h2>
-    <div class="subtitle">Variable max_width per line — drag the obstacle, text reflows around it</div>
+    <div class="subtitle"><strong style="color:var(--orange)">Illustrative JavaScript visualization.</strong> Drag the obstacle to see the variable-width concept; this section is not a Rust runtime proof.</div>
     <div class="layout-box" id="stream-box" style="min-height:220px;position:relative">
       <div id="stream-lines"></div>
       <div id="obstacle" style="
@@ -354,7 +354,7 @@
 
     <div class="bench-note" id="bench-status"></div>
     <div class="bench-note" style="margin-top:6px">
-      All 5 methods benchmark the layout hot path on 500 identical text samples.<br>
+      Each row measures the listed operation over the same 500 text samples.<br>
       <b>pretext-rs</b> = Rust compiled to WASM, layout() over pre-computed segment widths.<br>
       <b>pretext (TS)</b> = @chenglou/pretext original, same two-phase architecture in JS.<br>
       <b>canvas</b> = CanvasRenderingContext2d.measureText() per word segment.<br>
@@ -382,8 +382,8 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import initWasm, {
-  pretextPrepare, pretextLayout, pretextFree,
-  pretextPrepareBatch, pretextLayoutBatch, pretextFreeBatch
+  pretextPrepare, pretextLayout, pretextFree, pretextLayoutLines,
+  pretextClearMeasurementCache
 } from './pkg/pretext.js';
 
 import {
@@ -393,16 +393,32 @@ import {
 
 const initStatus = document.getElementById('init-status');
 const benchBtn = document.getElementById('run-bench');
+const LIVE_FONT = "13.6px 'JetBrains Mono', monospace";
+const BENCH_FONT = '16px Inter, sans-serif';
+const LIVE_FACE = "13.6px 'JetBrains Mono'";
+const BENCH_FACE = '16px Inter';
+const WHITE_SPACE = 'normal';
 
 let wasmReady = false;
 let tsReady = false;
 
 try {
   await initWasm();
+  if (!document.fonts) throw new Error('CSS Font Loading API is unavailable');
+  const [liveFaces, benchFaces] = await Promise.all([
+    document.fonts.load(LIVE_FACE, 'The quick brown fox'),
+    document.fonts.load(BENCH_FACE, 'The quick brown fox')
+  ]);
+  await document.fonts.ready;
+  if (liveFaces.length === 0 || benchFaces.length === 0 ||
+      !document.fonts.check(LIVE_FACE) || !document.fonts.check(BENCH_FACE)) {
+    throw new Error('Required demo fonts did not load');
+  }
+  pretextClearMeasurementCache();
   wasmReady = true;
 } catch (e) {
-  console.error('WASM init failed:', e);
-  initStatus.textContent = 'WASM load failed: ' + e.message;
+  console.error('WASM/font initialization failed:', e);
+  initStatus.textContent = 'WASM/font load failed: ' + String(e);
   initStatus.classList.add('error');
 }
 
@@ -410,6 +426,7 @@ try {
 try {
   const testPrep = tsPrepare('test', '16px Inter');
   const testResult = tsLayout(testPrep, 100, 24);
+  if (!Number.isInteger(testResult.lineCount)) throw new Error('TypeScript layout smoke failed');
   tsReady = true;
 } catch (e) {
   console.error('TS pretext init failed:', e);
@@ -431,8 +448,8 @@ if (wasmReady && tsReady) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// JS line-breaking for interactive sections (keeps them working
-// even before WASM loads — the benchmark uses the real engines)
+// Shared visualization helpers. Rust-backed sections do not substitute a
+// JavaScript layout when WASM is unavailable.
 // ═══════════════════════════════════════════════════════════════════
 
 const LINE_COLORS = ['#00d4ff','#ff6b9d','#7c5cfc','#00e5a0','#ffb347','#ff6b6b'];
@@ -448,24 +465,10 @@ function measureText(text, charW=7.5, cjkW=14) {
   let w=0; for (const c of text) w += isCJK(c) ? cjkW : charW; return w;
 }
 
-function jsLayout(text, maxWidth, charW=7.5, cjkW=14) {
-  if (!text) return [{text:'',width:0}];
-  const segs=[]; let buf='';
-  for (const c of text) {
-    if (isCJK(c)) { if(buf){segs.push(buf);buf='';} segs.push(c); }
-    else if (c===' ') { if(buf){segs.push(buf);buf='';} segs.push(' '); }
-    else buf+=c;
-  }
-  if(buf) segs.push(buf);
-  const lines=[]; let lt='',lw=0;
-  for (const s of segs) {
-    if(s===' '){lt+=' ';lw+=charW;continue;}
-    const sw=measureText(s,charW,cjkW);
-    if(lw+sw>maxWidth&&lt.trim()){lines.push({text:lt.trimEnd(),width:lw});lt=s;lw=sw;}
-    else{lt+=s;lw+=sw;}
-  }
-  if(lt.trim()) lines.push({text:lt.trimEnd(),width:measureText(lt.trimEnd(),charW,cjkW)});
-  return lines.length?lines:[{text:'',width:0}];
+function wasmLayoutLines(text, maxWidth, font = LIVE_FONT) {
+  const lines = JSON.parse(pretextLayoutLines(text, font, WHITE_SPACE, maxWidth));
+  if (!Array.isArray(lines)) throw new Error('pretextLayoutLines returned non-array JSON');
+  return lines;
 }
 
 function renderLines(container, lines, maxWidth) {
@@ -495,28 +498,28 @@ const reflowWidth=document.getElementById('reflow-width'), layoutTimer=document.
 
 // Use WASM for reflow if available
 let wasmDemoHandle = null;
-if (wasmReady) wasmDemoHandle = pretextPrepare(DEMO_TEXT);
+if (wasmReady) wasmDemoHandle = pretextPrepare(DEMO_TEXT, LIVE_FONT, WHITE_SPACE);
 
 function updateReflow(maxW) {
   let lines, us;
   if (wasmReady && wasmDemoHandle) {
     const t0=performance.now();
-    const lc = pretextLayout(wasmDemoHandle, maxW, 24);
+    const lineCount = pretextLayout(wasmDemoHandle, maxW, 24);
     const t1=performance.now();
     us = ((t1-t0)*1000).toFixed(1);
-    // Still use JS for visual rendering (WASM returns count only)
-    lines = jsLayout(DEMO_TEXT, maxW);
+    // Materialize the same reflow through the real Rust/WASM line API.
+    lines = wasmLayoutLines(DEMO_TEXT, maxW);
+    if (lines.length !== lineCount) throw new Error('WASM count and line materialization diverged');
   } else {
-    const t0=performance.now();
-    lines = jsLayout(DEMO_TEXT, maxW);
-    us = ((performance.now()-t0)*1000).toFixed(1);
+    lines = [{text:'Rust WASM unavailable — no layout result',width:0}];
+    us = null;
   }
   renderLines(reflowLines, lines, maxW);
   reflowWidth.textContent=Math.round(maxW);
   widthValue.textContent=Math.round(maxW)+'px';
   widthSlider.value=maxW;
   reflowBox.style.maxWidth=Math.max(maxW+50,200)+'px';
-  layoutTimer.textContent=`${wasmReady?'WASM':'JS'}: ${us}µs`;
+  layoutTimer.textContent=wasmReady?`WASM: ${us}µs`:'WASM unavailable';
   layoutTimer.classList.add('flash');
   clearTimeout(layoutTimer._t);
   layoutTimer._t=setTimeout(()=>layoutTimer.classList.remove('flash'),800);
@@ -531,14 +534,19 @@ function stopAuto(){autoActive=false;cancelAnimationFrame(autoRAF);autoInd.class
 setTimeout(()=>{autoActive=true;autoInd.classList.add('active');autoRAF=requestAnimationFrame(autoResize);setTimeout(stopAuto,8000);},1000);
 
 // ═══════════════════════════════════════════════════════════════════
-// Sections 2-4 (same JS-based interactive demos as before)
+// Sections 2-4 (custom text uses Rust/WASM when available; the explicitly
+// labeled inline-flow and streaming visualizations are illustrative JS)
 // ═══════════════════════════════════════════════════════════════════
 
 // Section 2: Custom Text
 const customText=document.getElementById('custom-text'),customSlider=document.getElementById('custom-width-slider');
 const customValue=document.getElementById('custom-width-value'),customLines=document.getElementById('custom-lines');
 const customDisplay=document.getElementById('custom-width-display');
-function updateCustom(){const w=+customSlider.value;renderLines(customLines,jsLayout(customText.value,w),w);
+function updateCustom(){const w=+customSlider.value;
+  const lines=wasmReady
+    ? wasmLayoutLines(customText.value,w)
+    : [{text:'Rust WASM unavailable — no layout result',width:0}];
+  renderLines(customLines,lines,w);
   customValue.textContent=w+'px';customDisplay.textContent=w;document.getElementById('custom-box').style.maxWidth=Math.max(w+50,200)+'px';}
 customText.addEventListener('input',updateCustom);customSlider.addEventListener('input',updateCustom);updateCustom();
 
@@ -597,6 +605,7 @@ for (let i=0;i<500;i++){let s='';const len=8+Math.floor(Math.random()*20);for(le
 benchBtn.addEventListener('click', async () => {
   benchBtn.disabled = true;
   const results = {};
+  try {
 
   // ── 1. pretext-rs (Rust/WASM) — actual compiled Rust hot path ──
   if (wasmReady) {
@@ -605,18 +614,22 @@ benchBtn.addEventListener('click', async () => {
 
     // Prepare all 500 texts (one-time cost, not benchmarked)
     const handles = [];
-    for (const t of SAMPLE_TEXTS) handles.push(pretextPrepare(t));
+    try {
+      for (const t of SAMPLE_TEXTS) handles.push(pretextPrepare(t, BENCH_FONT, WHITE_SPACE));
 
-    // Warm up
-    for (let i=0;i<500;i++) pretextLayout(handles[i], 200+(i%400), 24);
+      // Warm up
+      for (let i=0;i<500;i++) pretextLayout(handles[i], 200+(i%400), 24);
 
-    // Benchmark: 10 passes of 500 layout() calls = 5000 total
-    const t0 = performance.now();
-    for (let run=0;run<10;run++)
-      for (let i=0;i<500;i++) pretextLayout(handles[i], 100+(i%500), 24);
-    results.rust = ((performance.now()-t0)/5000)*1000; // µs per call
-
-    for (const h of handles) pretextFree(h);
+      // Benchmark: 10 passes of 500 layout() calls = 5000 total
+      const t0 = performance.now();
+      for (let run=0;run<10;run++)
+        for (let i=0;i<500;i++) pretextLayout(handles[i], 100+(i%500), 24);
+      results.rust = ((performance.now()-t0)/5000)*1000; // µs per call
+    } finally {
+      for (const h of handles) {
+        try { pretextFree(h); } catch (error) { console.error('Failed to free benchmark handle:', error); }
+      }
+    }
   }
 
   // ── 2. @chenglou/pretext (TypeScript original) — same two-phase ──
@@ -688,17 +701,17 @@ benchBtn.addEventListener('click', async () => {
 
   // ── Display ──
   const maxUs = results.interleaved;
-  const show = (id, val, us) => {
+  const show = (id, us) => {
     if (us == null) { document.getElementById(id).style.display='none'; return; }
     document.getElementById('bar-'+id).style.width = Math.max(0.5,(us/maxUs)*100)+'%';
     document.getElementById('val-'+id).textContent = us<1 ? us.toFixed(3)+' µs' : us.toFixed(1)+' µs';
   };
 
-  show('rust', 'bar-rust', results.rust);
-  show('ts', 'bar-ts', results.ts);
-  show('canvas', 'bar-canvas', results.canvas);
-  show('batched', 'bar-batched', results.batched);
-  show('interleaved', 'bar-interleaved', results.interleaved);
+  show('rust', results.rust);
+  show('ts', results.ts);
+  show('canvas', results.canvas);
+  show('batched', results.batched);
+  show('interleaved', results.interleaved);
 
   // Hero
   if (results.rust != null) {
@@ -710,14 +723,26 @@ benchBtn.addEventListener('click', async () => {
     ? (results.interleaved / results.rust).toFixed(0)
     : (results.ts != null ? (results.interleaved / results.ts).toFixed(0) : '?');
 
-  const rsVsTs = (results.rust != null && results.ts != null)
-    ? ` Rust WASM is ${(results.ts/results.rust).toFixed(1)}× faster than the TypeScript original.`
-    : '';
+  let rsVsTs = '';
+  if (results.rust != null && results.ts != null) {
+    const ratio = results.ts / results.rust;
+    if (ratio >= 1.05) {
+      rsVsTs = ` Rust WASM is ${ratio.toFixed(1)}× faster than TypeScript in this run.`;
+    } else if (ratio <= 0.95) {
+      rsVsTs = ` TypeScript is ${(1 / ratio).toFixed(1)}× faster than Rust WASM in this run.`;
+    } else {
+      rsVsTs = ' Rust WASM and TypeScript are within 5% in this run.';
+    }
+  }
 
-  benchStatus.textContent = `Done. ${speedup}× faster than interleaved DOM reads.${rsVsTs} All measured live — click again to verify.`;
-
-  benchBtn.disabled = false;
-  benchBtn.textContent = 'Run Again';
+    benchStatus.textContent = `Done. ${speedup}× faster than interleaved DOM reads.${rsVsTs} All measured live — click again to verify.`;
+  } catch (error) {
+    console.error('Benchmark failed:', error);
+    benchStatus.textContent = `Benchmark failed: ${String(error)}`;
+  } finally {
+    benchBtn.disabled = false;
+    benchBtn.textContent = 'Run Again';
+  }
 });
 
 updateReflow(400);

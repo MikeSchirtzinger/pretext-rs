@@ -3,16 +3,11 @@
 //! Run: `cargo run --example demo_svg > demo.svg`
 //! Or:  `cargo run --example demo_svg > demo.svg && open demo.svg`
 
-use pretext::backend::fixed::FixedWidthBackend;
 use pretext::backend::FontSpec;
-use pretext::inline_flow::{
-    prepare_inline_flow, layout_inline_flow, InlineFlowItem, BreakMode,
-};
+use pretext::backend::fixed::FixedWidthBackend;
+use pretext::inline_flow::{BreakMode, InlineFlowItem, layout_inline_flow, prepare_inline_flow};
 use pretext::types::LayoutCursor;
-use pretext::{
-    layout, layout_next_line, layout_with_lines, measure_natural_width, prepare,
-    prepare_with_segments,
-};
+use pretext::{layout, layout_next_line, layout_with_lines, prepare, prepare_with_segments};
 
 const BG: &str = "#0a0e17";
 const FG: &str = "#c8d3e0";
@@ -21,7 +16,9 @@ const ACCENT2: &str = "#ff6b9d";
 const ACCENT3: &str = "#7c5cfc";
 const DIM: &str = "#3a4459";
 const CHIP_BG: &str = "#162032";
-const LINE_COLORS: [&str; 6] = ["#00d4ff", "#ff6b9d", "#7c5cfc", "#00e5a0", "#ffb347", "#ff6b6b"];
+const LINE_COLORS: [&str; 6] = [
+    "#00d4ff", "#ff6b9d", "#7c5cfc", "#00e5a0", "#ffb347", "#ff6b6b",
+];
 
 struct SvgBuilder {
     elements: Vec<String>,
@@ -83,7 +80,9 @@ impl SvgBuilder {
 
         for (i, (text, width)) in lines.iter().enumerate() {
             let line_y = self.y_cursor + 4.0 + i as f64 * line_height;
-            let color = LINE_COLORS[i % LINE_COLORS.len()];
+            let Some(&color) = LINE_COLORS.get(i % LINE_COLORS.len()) else {
+                continue;
+            };
 
             // Line background highlight
             self.elements.push(format!(
@@ -171,7 +170,15 @@ impl SvgBuilder {
         }
     }
 
-    fn perf_bar(&mut self, label: &str, value_us: f64, max_us: f64, x: f64, bar_width: f64, color: &str) {
+    fn perf_bar(
+        &mut self,
+        label: &str,
+        value_us: f64,
+        max_us: f64,
+        x: f64,
+        bar_width: f64,
+        color: &str,
+    ) {
         let bar_fill = (value_us / max_us) * bar_width;
         self.elements.push(format!(
             r#"<rect x="{x}" y="{y}" width="{bar_width}" height="20" rx="3" fill="{DIM}" fill-opacity="0.2" />"#,
@@ -237,9 +244,9 @@ fn escape_xml(c: char) -> String {
     }
 }
 
-fn main() {
+fn main() -> pretext::Result<()> {
     let backend = FixedWidthBackend::new();
-    let font = FontSpec::new("16px Inter");
+    let font = FontSpec::new("16px Inter")?;
     let char_width = 8.0; // Visual char width in SVG
     let line_height = 22.0;
     let left_margin = 50.0;
@@ -254,12 +261,13 @@ fn main() {
     );
 
     let text = "The quick brown fox jumps over the lazy dog";
-    let prepared = prepare_with_segments(text, &font, &backend, Default::default());
+    let prepared = prepare_with_segments(text, &font, &backend, Default::default())?;
 
     for &max_w in &[320.0, 200.0, 120.0] {
         svg.width_label(left_margin, max_w);
-        let lines = layout_with_lines(&prepared, max_w, line_height);
-        let line_data: Vec<(String, f64)> = lines.iter().map(|l| (l.text.clone(), l.width)).collect();
+        let lines = layout_with_lines(&prepared, max_w)?;
+        let line_data: Vec<(String, f64)> =
+            lines.iter().map(|l| (l.text.clone(), l.width)).collect();
         svg.render_lines(&line_data, left_margin, max_w, char_width, line_height);
     }
 
@@ -271,14 +279,15 @@ fn main() {
     );
 
     let cjk_text = "日本語のテキストレイアウト";
-    let cjk_font = FontSpec::new("16px Noto Sans");
-    let cjk_prepared = prepare_with_segments(cjk_text, &cjk_font, &backend, Default::default());
+    let cjk_font = FontSpec::new("16px Noto Sans")?;
+    let cjk_prepared = prepare_with_segments(cjk_text, &cjk_font, &backend, Default::default())?;
     let cjk_char_width = 16.0;
 
     for &max_w in &[240.0, 140.0] {
         svg.width_label(left_margin, max_w);
-        let lines = layout_with_lines(&cjk_prepared, max_w, line_height);
-        let line_data: Vec<(String, f64)> = lines.iter().map(|l| (l.text.clone(), l.width)).collect();
+        let lines = layout_with_lines(&cjk_prepared, max_w)?;
+        let line_data: Vec<(String, f64)> =
+            lines.iter().map(|l| (l.text.clone(), l.width)).collect();
         svg.render_lines(&line_data, left_margin, max_w, cjk_char_width, line_height);
     }
 
@@ -292,32 +301,32 @@ fn main() {
     let items = vec![
         InlineFlowItem {
             text: "Deploy to".to_string(),
-            font: FontSpec::new("16px Inter"),
+            font: FontSpec::new("16px Inter")?,
             break_mode: BreakMode::Normal,
             extra_width: 0.0,
         },
         InlineFlowItem {
             text: "@staging".to_string(),
-            font: FontSpec::new("14px monospace"),
+            font: FontSpec::new("14px monospace")?,
             break_mode: BreakMode::Never,
             extra_width: 12.0,
         },
         InlineFlowItem {
             text: "completed successfully in".to_string(),
-            font: FontSpec::new("16px Inter"),
+            font: FontSpec::new("16px Inter")?,
             break_mode: BreakMode::Normal,
             extra_width: 0.0,
         },
         InlineFlowItem {
             text: "3.2s".to_string(),
-            font: FontSpec::new("14px monospace"),
+            font: FontSpec::new("14px monospace")?,
             break_mode: BreakMode::Never,
             extra_width: 12.0,
         },
     ];
 
-    let flow = prepare_inline_flow(&items, &backend);
-    let flow_lines = layout_inline_flow(&flow, 280.0);
+    let flow = prepare_inline_flow(&items, &backend)?;
+    let flow_lines = layout_inline_flow(&flow, 280.0)?;
 
     svg.width_label(left_margin, 280.0);
     for (li, line) in flow_lines.iter().enumerate() {
@@ -326,7 +335,9 @@ fn main() {
             .fragments
             .iter()
             .map(|f| {
-                let is_atomic = items[f.item_index].break_mode == BreakMode::Never;
+                let is_atomic = items
+                    .get(f.item_index)
+                    .is_some_and(|item| item.break_mode == BreakMode::Never);
                 (f.text.clone(), is_atomic, f.occupied_width)
             })
             .collect();
@@ -342,8 +353,8 @@ fn main() {
     );
 
     let stream_text = "The quick brown fox jumps over the lazy dog and keeps on running";
-    let stream_prepared = prepare_with_segments(stream_text, &font, &backend, Default::default());
-    let stream_opaque = prepare(stream_text, &font, &backend, Default::default());
+    let stream_prepared = prepare_with_segments(stream_text, &font, &backend, Default::default())?;
+    let stream_opaque = prepare(stream_text, &font, &backend, Default::default())?;
     let variable_widths: [f64; 8] = [320.0, 240.0, 160.0, 160.0, 240.0, 320.0, 320.0, 320.0];
 
     // Draw the "obstacle" shape
@@ -367,27 +378,37 @@ fn main() {
         &stream_opaque,
         cursor,
         variable_widths.get(line_idx).copied().unwrap_or(320.0),
-    ) {
+    )? {
         let max_w = variable_widths.get(line_idx).copied().unwrap_or(320.0);
         // Materialize text for this line
-        let seg_text: String = stream_prepared.segments
-            [range.start.segment_index..range.end.segment_index.min(stream_prepared.segments.len())]
+        let start_segment = range.start.segment_index();
+        let end_segment = range
+            .end
+            .segment_index()
+            .min(stream_prepared.segments().len());
+        let seg_text: String = stream_prepared
+            .segments()
             .iter()
+            .skip(start_segment)
+            .take(end_segment.saturating_sub(start_segment))
             .map(|s| s.as_str())
             .collect::<Vec<_>>()
             .join("");
         let trimmed = seg_text.trim().to_string();
         stream_lines.push((trimmed, range.width, max_w));
         line_idx += 1;
-        if next == cursor || next.segment_index >= stream_opaque.segment_count() {
+        if next == cursor || next.segment_index() >= stream_opaque.segment_count() {
             break;
         }
         cursor = next;
     }
 
-    for (i, (text, width, max_w)) in stream_lines.iter().enumerate() {
+    for ((i, (text, width, max_w)), color) in stream_lines
+        .iter()
+        .enumerate()
+        .zip(LINE_COLORS.iter().cycle())
+    {
         let line_y = svg.y_cursor + i as f64 * line_height;
-        let color = LINE_COLORS[i % LINE_COLORS.len()];
 
         // Width boundary
         svg.elements.push(format!(
@@ -424,12 +445,12 @@ fn main() {
     );
 
     let perf_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
-    let perf_prepared = prepare(perf_text, &font, &backend, Default::default());
+    let perf_prepared = prepare(perf_text, &font, &backend, Default::default())?;
 
     // Benchmark
     let start = std::time::Instant::now();
     for w in (50..550).cycle().take(10000) {
-        let _ = layout(&perf_prepared, w as f64, 24.0);
+        let _result = layout(&perf_prepared, w as f64, 24.0)?;
     }
     let layout_elapsed = start.elapsed();
     let layout_us = layout_elapsed.as_nanos() as f64 / 10000.0 / 1000.0;
@@ -458,4 +479,5 @@ fn main() {
     // ── Emit ─────────────────────────────────────────────────────────
     let total_width = 520.0;
     print!("{}", svg.emit(total_width));
+    Ok(())
 }

@@ -158,9 +158,7 @@ pub const fn is_zero_width_space(c: char) -> bool {
 #[must_use]
 pub fn looks_like_url(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
-    lower.starts_with("http://")
-        || lower.starts_with("https://")
-        || lower.starts_with("www.")
+    lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("www.")
 }
 
 /// Check if a character is a URL-internal character (not a break point in URLs).
@@ -169,8 +167,28 @@ pub fn looks_like_url(s: &str) -> bool {
 pub const fn is_url_internal(c: char) -> bool {
     matches!(
         c,
-        '/' | '.' | '-' | '_' | '~' | ':' | '?' | '#' | '[' | ']' | '@' | '!' | '$' | '&'
-        | '\'' | '(' | ')' | '*' | '+' | ',' | ';' | '=' | '%'
+        '/' | '.'
+            | '-'
+            | '_'
+            | '~'
+            | ':'
+            | '?'
+            | '#'
+            | '['
+            | ']'
+            | '@'
+            | '!'
+            | '$'
+            | '&'
+            | '\''
+            | '('
+            | ')'
+            | '*'
+            | '+'
+            | ','
+            | ';'
+            | '='
+            | '%'
     )
 }
 
@@ -189,8 +207,9 @@ pub fn is_all_digits(s: &str) -> bool {
 
 /// Check if a character is an emoji (simplified detection).
 ///
-/// Covers the most common emoji ranges. For full accuracy in WASM,
-/// the canvas measurement backend applies emoji-specific corrections.
+/// Covers common emoji ranges for diagnostic metadata. It is not a complete
+/// Unicode emoji-property implementation, and no measurement correction is
+/// inferred from this classification.
 #[must_use]
 #[inline]
 pub fn is_emoji(c: char) -> bool {

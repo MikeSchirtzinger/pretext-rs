@@ -1,0 +1,185 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88
+        with:
+          toolchain: 1.95.0
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Check every target and feature
+        run: cargo check --workspace --all-targets --all-features --locked
+
+      - name: Check the WebAssembly target
+        run: cargo check --target wasm32-unknown-unknown --all-features --locked
+
+      - name: Install pinned wasm-pack
+        shell: bash
+        env:
+          WASM_PACK_VERSION: 0.15.0
+          WASM_PACK_SHA256: c09f971ecaed9a2efc80fdcea7a00ef6b53c7fadc8c57d1f61b53a6aa66b668a
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/wasm-pack.tar.gz"
+          directory="wasm-pack-v${WASM_PACK_VERSION}-x86_64-unknown-linux-musl"
+
+          curl \
+            --fail \
+            --location \
+            --silent \
+            --show-error \
+            --retry 5 \
+            --retry-all-errors \
+            "https://github.com/wasm-bindgen/wasm-pack/releases/download/v${WASM_PACK_VERSION}/${directory}.tar.gz" \
+            --output "$archive"
+          echo "${WASM_PACK_SHA256}  ${archive}" | sha256sum --check -
+          tar --extract --gzip --file "$archive" --directory "$RUNNER_TEMP"
+          install -m 0755 \
+            "$RUNNER_TEMP/$directory/wasm-pack" \
+            "$HOME/.cargo/bin/wasm-pack"
+          test "$(wasm-pack --version)" = "wasm-pack ${WASM_PACK_VERSION}"
+
+      - name: Test Canvas backend in headless Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="${CHROME_BIN:-/usr/bin/google-chrome}"
+          driver="${CHROMEWEBDRIVER:?CHROMEWEBDRIVER is unavailable}/chromedriver"
+          test -x "$chrome"
+          test -x "$driver"
+
+          chrome_version="$("$chrome" --product-version)"
+          driver_version="$("$driver" --version | awk '{print $2}')"
+          if [[ "${chrome_version%.*}" != "${driver_version%.*}" ]]; then
+            echo "Chrome/ChromeDriver build mismatch: ${chrome_version} vs ${driver_version}" >&2
+            exit 1
+          fi
+
+          wasm-pack test \
+            --headless \
+            --chrome \
+            --chromedriver "$driver" \
+            . \
+            --all-features \
+            --locked \
+            --test wasm_browser
+
+          wasm-pack test \
+            --headless \
+            --chrome \
+            --chromedriver "$driver" \
+            . \
+            --all-features \
+            --locked \
+            --lib
+
+      - name: Test every target and feature
+        run: cargo test --workspace --all-targets --all-features --locked
+
+      - name: Test API documentation examples
+        run: cargo test --workspace --doc --all-features --locked
+
+      - name: Lint every target and feature
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Enforce panic-free production code
+        run: >-
+          cargo clippy --workspace --lib --all-features --locked --
+          -D warnings
+          -D clippy::unwrap_used
+          -D clippy::expect_used
+          -D clippy::panic
+          -D clippy::indexing_slicing
+
+      - name: Enforce panic-free production examples
+        run: >-
+          cargo clippy --workspace --examples --all-features --locked --
+          -D warnings
+          -D clippy::unwrap_used
+          -D clippy::expect_used
+          -D clippy::panic
+          -D clippy::indexing_slicing
+
+      - name: Enforce panic-free WebAssembly production code
+        run: >-
+          cargo clippy --target wasm32-unknown-unknown --lib --all-features --locked --
+          -D warnings
+          -D clippy::unwrap_used
+          -D clippy::expect_used
+          -D clippy::panic
+          -D clippy::indexing_slicing
+
+      - name: Build strict API documentation
+        env:
+          RUSTDOCFLAGS: -D warnings -D missing-docs
+        run: cargo doc --workspace --all-features --no-deps --locked
+
+      - name: Build strict WebAssembly API documentation
+        env:
+          RUSTDOCFLAGS: -D warnings -D missing-docs
+        run: >-
+          cargo doc --workspace --target wasm32-unknown-unknown
+          --all-features --no-deps --locked
+
+      - name: Validate package metadata
+        run: cargo metadata --format-version 1 --locked --no-deps > /dev/null
+
+      - name: Verify the publishable package
+        run: cargo package --locked
+
+      - name: Install locked demo dependency
+        run: npm ci --ignore-scripts
+
+      - name: Check demo module syntax
+        run: >-
+          sed -n '/<script type="module">/,/<\/script>/p' demo.html |
+          sed '1d;$d' |
+          node --input-type=module --check
+
+      - name: Audit demo dependency
+        run: npm audit --audit-level=high
+
+  dependencies:
+    name: Dependency policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Audit dependencies, licenses, and sources
+        uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe
+        with:
+          command: check
