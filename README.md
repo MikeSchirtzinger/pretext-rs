@@ -1,8 +1,8 @@
 # pretext-rs
 
-A Rust port of [**@chenglou/pretext**](https://github.com/chenglou/pretext) — Cheng Lou's DOM-free text measurement and line-breaking engine.
+A Rust port of [**@chenglou/pretext**](https://github.com/chenglou/pretext): Cheng Lou's DOM-free text measurement and line-breaking engine.
 
-**All credit for the algorithm, design, and original implementation goes to [Cheng Lou](https://github.com/chenglou).** This project is a direct port of his work to Rust. It exists because we needed pretext's two-phase `prepare` / `layout` architecture inside a Rust project and didn't want to reimplement the line-breaking logic from scratch. If you're working in JavaScript/TypeScript, use [the original](https://github.com/chenglou/pretext) instead — this repo exists only to make the same ideas available to the Rust ecosystem.
+**All credit for the algorithm, design, and original implementation goes to [Cheng Lou](https://github.com/chenglou).** This project is a direct port of his work to Rust. It exists because we needed pretext's two-phase `prepare` / `layout` architecture inside a Rust project and didn't want to reimplement the line-breaking logic from scratch. If you're working in JavaScript/TypeScript, use [the original](https://github.com/chenglou/pretext) instead. This repo exists only to make the same ideas available to the Rust ecosystem.
 
 Version 0.2 is a breaking production-hardening release. See the
 [changelog](./CHANGELOG.md) for the migration summary.
@@ -13,10 +13,10 @@ Version 0.2 is a breaking production-hardening release. See the
 
 Two-phase text layout, DOM-free:
 
-- **`prepare(text, font, backend, opts)`** — the expensive measurement phase. Analyzes text into segments, measures each segment once, returns a `PreparedText` handle.
-- **`layout(prepared, max_width, line_height)`** — the fast reflow phase. Pure arithmetic over cached widths with no measurement or text materialization.
+- **`prepare(text, font, backend, opts)`**: the expensive measurement phase. Analyzes text into segments, measures each segment once, returns a `PreparedText` handle.
+- **`layout(prepared, max_width, line_height)`**: the fast reflow phase. Pure arithmetic over cached widths with no measurement or text materialization.
 
-The win is that reflow (resize, re-wrap at a new width) is essentially free — all the expensive work was done in `prepare`.
+The win is that reflow (resize, re-wrap at a new width) is essentially free: all the expensive work was done in `prepare`.
 
 ## Quick start
 
@@ -35,9 +35,9 @@ fn main() -> pretext::Result<()> {
 
 ### Backends
 
-- `backend::fixed::FixedWidthBackend` — deterministic, dependency-free. Useful for tests and server-side estimation.
-- `backend::CanvasBackend` — browser `canvas.measureText` (requires the `wasm` feature).
-- `backend::SkrifaNominalBackend` — explicit native **unshaped advance
+- `backend::fixed::FixedWidthBackend`: deterministic, dependency-free. Useful for tests and server-side estimation.
+- `backend::CanvasBackend`: browser `canvas.measureText` (requires the `wasm` feature).
+- `backend::SkrifaNominalBackend`: explicit native **unshaped advance
   estimation** via Skrifa (requires `skrifa-nominal`). It does not apply
   kerning, ligatures, bidi shaping, or complex-script positioning and must not
   be used when line breaks need to match rendered production typography. It
@@ -46,11 +46,11 @@ fn main() -> pretext::Result<()> {
 
 ### More APIs
 
-- `layout_with_lines` — return each wrapped line's text, width, and cursor range.
-- `layout_next_line` — streaming API; get one line at a time, with per-line `max_width` (useful for flowing text around images).
-- `measure_natural_width` — width the text would occupy unwrapped.
-- `walk_line_ranges` — geometry-only iteration, fastest path when you don't need the text.
-- `prepare_inline_flow_with_options` — prepare mixed inline runs with aggregate
+- `layout_with_lines`: return each wrapped line's text, width, and cursor range.
+- `layout_next_line`: streaming API; get one line at a time, with per-line `max_width` (useful for flowing text around images).
+- `measure_natural_width`: width the text would occupy unwrapped.
+- `walk_line_ranges`: geometry-only iteration, fastest path when you don't need the text.
+- `prepare_inline_flow_with_options`: prepare mixed inline runs with aggregate
   item, byte, grapheme, and segment limits. The convenience
   `prepare_inline_flow` uses production-safe defaults.
 
@@ -65,13 +65,13 @@ wasm-pack build --release --target web -- --features wasm
 The WASM API exposes explicit font and whitespace inputs (`whiteSpace` is
 `"normal"` or `"pre-wrap"`):
 
-- `pretextPrepare(text, fontCss, whiteSpace)` / `pretextLayout(handle, maxWidth, lineHeight)` / `pretextFree(handle)` — the two-phase path with handle-based state.
-- `pretextPrepareAndLayout(text, fontCss, whiteSpace, maxWidth, lineHeight)` — one-shot convenience.
-- `pretextLayoutLines(text, fontCss, whiteSpace, maxWidth)` — returns a JSON array of `{text, width}` per wrapped line, for canvas renderers that need to draw each line individually.
+- `pretextPrepare(text, fontCss, whiteSpace)` / `pretextLayout(handle, maxWidth, lineHeight)` / `pretextFree(handle)`: the two-phase path with handle-based state.
+- `pretextPrepareAndLayout(text, fontCss, whiteSpace, maxWidth, lineHeight)`: one-shot convenience.
+- `pretextLayoutLines(text, fontCss, whiteSpace, maxWidth)`: returns a JSON array of `{text, width}` per wrapped line, for canvas renderers that need to draw each line individually.
 - `pretextPrepareBatch(textsJson, fontCss, whiteSpace)`,
   `pretextLayoutBatch(handlesCsv, maxWidth, lineHeight)`, and
   `pretextFreeBatch(handlesCsv)` for bounded atomic batch processing.
-- `pretextClearMeasurementCache()` — invalidate retained Canvas measurements
+- `pretextClearMeasurementCache()`: invalidate retained Canvas measurements
   after browser font availability changes.
 
 Every WASM export throws on malformed input, unknown handles, pool exhaustion,
@@ -96,7 +96,7 @@ as `"16px Inter, sans-serif"`. This makes browser fallback an explicit caller
 choice; a named-only family or quoted `"sans-serif"` is rejected. Callers must
 also wait for required web fonts before preparing text. If the available font
 faces change later, call `pretextClearMeasurementCache()`, free affected
-handles, and prepare them again—prepared measurements are immutable.
+handles, and prepare them again. Prepared measurements are immutable.
 
 ## Error and resource model
 
@@ -134,7 +134,7 @@ Divergences from the original are intentional where Rust idioms differ (error ha
 
 ### Emoji width: deliberate scope boundary
 
-The JS reference corrects canvas `measureText` emoji inflation at runtime: it probes the active font's emoji glyph width, stores a per-font `emojiCorrection` factor, and subtracts `emojiCount × emojiCorrection` from every segment width (see upstream `measurement.ts::getCorrectedSegmentWidth`). That mechanism is browser-specific — it depends on canvas metrics for emoji glyphs that the host OS actually has installed.
+The JS reference corrects canvas `measureText` emoji inflation at runtime: it probes the active font's emoji glyph width, stores a per-font `emojiCorrection` factor, and subtracts `emojiCount × emojiCorrection` from every segment width (see upstream `measurement.ts::getCorrectedSegmentWidth`). That mechanism is browser-specific. It depends on canvas metrics for emoji glyphs that the host OS actually has installed.
 
 Rust backends in this crate take a simpler stance:
 
@@ -144,13 +144,13 @@ Rust backends in this crate take a simpler stance:
 
 This is intentional. The value `emoji_count` is exposed so downstream callers who need the JS semantics can compute their own correction from it. If you're writing a custom backend that measures emoji precisely (for example, by integrating a shaping engine and an emoji-aware face), the pipeline will honor its widths.
 
-If a future backend wants to internalize this correction, it can — the field is there waiting.
+If a future backend wants to internalize this correction, it can. The field is there waiting.
 
 ## Credits
 
-- **[Cheng Lou](https://github.com/chenglou)** — original author of [pretext](https://github.com/chenglou/pretext). The algorithm, design decisions, and reference implementation are his. Any elegance here is his; any bugs are this port's.
+- **[Cheng Lou](https://github.com/chenglou)**: original author of [pretext](https://github.com/chenglou/pretext). The algorithm, design decisions, and reference implementation are his. Any elegance here is his; any bugs are this port's.
 - This Rust port is maintained separately. Upstream changes to the JS reference are tracked manually.
 
 ## License
 
-MIT — same as the original. See [LICENSE](./LICENSE). The license file preserves the original's copyright notice in addition to this port's.
+MIT, same as the original. See [LICENSE](./LICENSE). The license file preserves the original's copyright notice in addition to this port's.
